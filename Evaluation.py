@@ -78,9 +78,11 @@ class Evaluator:
         spnTags = []
         engTag = ""
         spanTag = ""
+
         print "Tagging {} words".format(len(words))
         for k, word in enumerate(words):
             # check if punctuation else use hmmtag
+            anglicism = "no"
             lang = 'Punct' if word in string.punctuation else hmmtags[k]
             lang = 'Num' if word.isdigit() else lang
             # check if word is NE
@@ -100,6 +102,8 @@ class Evaluator:
                 NE = "{}/{}".format(engTag, spanTag)
             else:
                 NE = "O"
+                if lang == "Eng":
+                    anglicism = "yes"
             # record probabilities
             if lang in ("Eng", "Spn"):
               hmmProb = round(hmm.transitions[prevLang][lang], 2)
@@ -113,8 +117,8 @@ class Evaluator:
               spnProb = "N/A"
               totalProb = "N/A"
 
-            taggedTokens.append((word, lang, NE, str(engProb), str(spnProb), str(hmmProb), str(totalProb)))
-            #taggedTokens.append((word, lang, NE))
+            #taggedTokens.append((word, lang, NE, anglicism, str(engProb), str(spnProb), str(hmmProb), str(totalProb)))
+            taggedTokens.append((word, lang, NE, anglicism))
             #print word, lang, NE
         return taggedTokens
 
@@ -125,10 +129,10 @@ class Evaluator:
             text = io.open(testCorpus).read()
             testWords = toWordsCaseSen(text)
             tagged_rows = self.tagger(testWords)
-            output.write(u"Token\tLanguage\tNamed Entity\tEng-NGram Prob\tSpn-NGram Prob\tHMM Prob\tTotal Prob\n")
+            #output.write(u"Token\tLanguage\tNamed Entity\tAnglicism\tEng-NGram Prob\tSpn-NGram Prob\tHMM Prob\tTotal Prob\n")
+            output.write(u"Token\tLanguage\tNamed Entity\tAnglicism\n")
             for row in tagged_rows:
                 csv_row = '\t'.join([unicode(s) for s in row]) + u"\n"
-                print csv_row
                 output.write(csv_row)
             print "Annotation file written"
 
@@ -144,12 +148,10 @@ class Evaluator:
                 columns = x.split("\t")
                 text.append(columns[-2].strip())
                 gold_tags.append(columns[-1].strip())
-
-
             # annotate text with model
             annotated_output = self.tagger(text)
-            #tokens, lang_tags, NE_tags = map(list, zip(*annotated_output))
-            tokens, lang_tags, NE_tags, engProbs, spnProbs, hmmProbs, totalProbs = map(list, zip(*annotated_output))
+            tokens, lang_tags, NE_tags, anglicism_tags = map(list, zip(*annotated_output))
+            #tokens, lang_tags, NE_tags, anglicism_tags, engProbs, spnProbs, hmmProbs, totalProbs = map(list, zip(*annotated_output))
 
             # set counters to 0
             langCorrect = langTotal = NECorrect = NETotal = 0
