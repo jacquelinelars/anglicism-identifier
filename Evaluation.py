@@ -5,13 +5,12 @@ import sys
 import re
 import io
 from HiddenMarkovModel import HiddenMarkovModel
-import string
 from nltk.tag.stanford import StanfordNERTagger
 from collections import Counter
 from CharNGram import *
 from CodeSwitchedLanguageModel import CodeSwitchedLanguageModel
 import math
-import csv
+# import csv
 
 """ Splits text input into words and formats them, splitting by whitespace
 
@@ -21,7 +20,7 @@ import csv
 # case-insensitive tokenizer for ngram probabilities only
 
 
-def toWords(text): # separates punctuation
+def toWords(text):  # separates punctuation
     # requires utf-8 encoding
     token = re.compile(ur'[\w]+|[^\s\w]', re.UNICODE)
     tokens = re.findall(token, text)
@@ -78,12 +77,13 @@ class Evaluator:
         spnTags = []
         engTag = ""
         spanTag = ""
-
+        token = re.compile(ur'[^\w\s]', re.UNICODE)
         print "Tagging {} words".format(len(words))
         for k, word in enumerate(words):
             # check if punctuation else use hmmtag
             anglicism = "no"
-            lang = 'Punct' if word in string.punctuation else hmmtags[k]
+            #lang = 'Punct' if word in string.punctuation else hmmtags[k]
+            lang = 'Punct' if re.match(token, word) and not word[-1].isalpha() else hmmtags[k]
             lang = 'Num' if word.isdigit() else lang
             # check if word is NE
             if lang != "Punct":
@@ -154,33 +154,39 @@ class Evaluator:
             #tokens, lang_tags, NE_tags, anglicism_tags, engProbs, spnProbs, hmmProbs, totalProbs = map(list, zip(*annotated_output))
 
             # set counters to 0
-            langCorrect = langTotal = NECorrect = NETotal = 0
+            TrueP = FalseN = TrueN = FalseP = 0
             evaluations = []
 
             # compare gold standard and model tags
-            for lang, NE, gold in zip(lang_tags, NE_tags, gold_tags):
-                if gold in ('Eng', 'Spn'):   #evaluate language tags
-                    langTotal += 1
-                    if gold == lang:
-                        langCorrect += 1
-                        evaluations.append("Correct")
-                    else:
-                        evaluations.append("Incorrect")
-                # evaluate NE tags
-                elif gold == "NamedEnt":
-                    NETotal += 1
-                    if NE != 'O':
-                        NECorrect += 1
-                        evaluations.append("Correct")
-                    else:
-                        evaluations.append("Incorrect")
-                # don't evaluate punctuation
-                else:
+            for ang, gold in zip(anglicism_tags, gold_tags):
+                if gold == "punc":
                     evaluations.append("NA")
+                    continue
+                if ang == "yes":
+                    # is this token really  an anglicism?
+                    if gold == 'Eng':
+                        TrueP += 1 #yay! correction prediction
+                        evaluations.append("Correct")
+                    else:
+                        FalseP += 1
+                        evaluations.append("Incorrect")
+                else:   # if ang ==  'no'
+                    # is this token really not an anglicism?
+                    if gold != 'Eng':
+                        TrueN +=1 #yay! correction prediction
+                        evaluations.append("Correct")
+                    else:
+                        FalseN += 1
+                        evaluations.append("Incorrect")
             #write
-            output.write(u"Language Accuracy: {}\n".format(langCorrect / float(langTotal)))
-            output.write(u"NE Accuracy: {}\n".format(NECorrect / float(NETotal)))
-            output.write(u"Token\tGold Standard\tTagged Language\tNamed Entity\tEvaluation\n")
+            Accuracy = (TrueP + TrueN) / float(TrueP + FalseN + TrueN + FalseP)
+            Precision = TrueP / float(TrueP + FalseP)
+            Recall = TrueP / float(TrueP + FalseN)
+            output.write(
+                u"Anglicism Accuracy: {}\nAnglicism Precision: {}\nAnglicism Recall: {}\n".format(
+                    Accuracy, Precision, Recall))
+            output.write(
+                u"Token\tGold Standard\tTagged Language\tNamed Entity\tEvaluation\n")
             for all_columns in zip(text, gold_tags, lang_tags, NE_tags, evaluations):
                 output.write(u"\t".join(all_columns) + u"\n")
             print "Evaluation file written"
