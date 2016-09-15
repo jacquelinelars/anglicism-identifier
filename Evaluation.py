@@ -118,8 +118,7 @@ class Evaluator:
               totalProb = "N/A"
 
             #taggedTokens.append((word, lang, NE, anglicism, str(engProb), str(spnProb), str(hmmProb), str(totalProb)))
-            taggedTokens.append((word, lang, NE, anglicism))
-            #print word, lang, NE
+            taggedTokens.append((word, lang, NE, anglicism, str(engProb), str(spnProb)))
         return taggedTokens
 
     #  Tag testCorpus and write to output file
@@ -130,7 +129,7 @@ class Evaluator:
             testWords = toWordsCaseSen(text)
             tagged_rows = self.tagger(testWords)
             #output.write(u"Token\tLanguage\tNamed Entity\tAnglicism\tEng-NGram Prob\tSpn-NGram Prob\tHMM Prob\tTotal Prob\n")
-            output.write(u"Token\tLanguage\tNamed Entity\tAnglicism\n")
+            output.write(u"Token\tLanguage\tNamed Entity\tAnglicism\tEng-NGram Prob\tSpn-NGram Prob\n")
             for row in tagged_rows:
                 csv_row = '\t'.join([unicode(s) for s in row]) + u"\n"
                 output.write(csv_row)
@@ -140,7 +139,9 @@ class Evaluator:
     def evaluate(self, goldStandard):
         print "Evaluation Mode"
         with io.open(goldStandard + '_outputwithHMM.txt', 'w', encoding='utf8') as output:
-
+            # create error file
+            error_file = io.open(goldStandard + '_ModelErrors.txt', 'w', encoding='utf8')
+            error_file.write(u'Token\tGS\tAnglicism\tNE\n')
             #create list of text and tags
             lines = io.open(goldStandard, 'r', encoding='utf8').readlines()
             text, gold_tags = [], []
@@ -150,7 +151,7 @@ class Evaluator:
                 gold_tags.append(columns[-1].strip())
             # annotate text with model
             annotated_output = self.tagger(text)
-            tokens, lang_tags, NE_tags, anglicism_tags = map(list, zip(*annotated_output))
+            tokens, lang_tags, NE_tags, anglicism_tags, engProbs, spnProbs = map(list, zip(*annotated_output))
             #tokens, lang_tags, NE_tags, anglicism_tags, engProbs, spnProbs, hmmProbs, totalProbs = map(list, zip(*annotated_output))
 
             # set counters to 0
@@ -158,7 +159,9 @@ class Evaluator:
             evaluations = []
 
             # compare gold standard and model tags
-            for ang, gold in zip(anglicism_tags, gold_tags):
+            for index, tags in enumerate(zip(anglicism_tags, gold_tags)):
+                ang = tags[0]
+                gold = tags[1]
                 if gold == "punc":
                     evaluations.append("NA")
                     continue
@@ -170,6 +173,7 @@ class Evaluator:
                     else:
                         FalseP += 1
                         evaluations.append("Incorrect")
+                        error_file.write(u"\t".join([tokens[index],gold, ang, NE_tags[index]]) + u"\n")
                 else:   # if ang ==  'no'
                     # is this token really not an anglicism?
                     if gold != 'Eng':
@@ -178,6 +182,7 @@ class Evaluator:
                     else:
                         FalseN += 1
                         evaluations.append("Incorrect")
+                        error_file.write(u"\t".join([tokens[index],gold, ang, NE_tags[index]]) + u"\n")
             #write
             Accuracy = (TrueP + TrueN) / float(TrueP + FalseN + TrueN + FalseP)
             Precision = TrueP / float(TrueP + FalseP)
@@ -186,8 +191,8 @@ class Evaluator:
                 u"Anglicism Accuracy: {}\nAnglicism Precision: {}\nAnglicism Recall: {}\n".format(
                     Accuracy, Precision, Recall))
             output.write(
-                u"Token\tGold Standard\tTagged Language\tNamed Entity\tEvaluation\n")
-            for all_columns in zip(text, gold_tags, lang_tags, NE_tags, evaluations):
+                u"Token\tGold Standard\tTagged Language\tNamed Entity\tAnglicism\tEvaluation\n")
+            for all_columns in zip(text, gold_tags, lang_tags, NE_tags, anglicism_tags, evaluations):
                 output.write(u"\t".join(all_columns) + u"\n")
             print "Evaluation file written"
 
@@ -201,8 +206,8 @@ Evaluate
 """
 # Evaluation.py goldStandard testCorpus
 def main(argv):
-    goldStandard = io.open(argv[0], 'r', encoding='utf8')
-    #testCorpus = io.open(argv[1], 'r', encoding='utf8')
+    parameterCorpus = io.open('./TrainingCorpora/KillerCronicas-GS.tsv', 'r', encoding='utf8')
+    #parameterCorpus = io.open('/Users/jacqueline/Desktop/NACC-GS.tsv','r', encoding='utf8')
     n = 5
     #engData = toWords(io.open('./TrainingCorpora/Subtlex.US.trim.txt', 'r', encoding='utf8').read())
     engData = toWords(io.open("./TrainingCorpora/EngCorpus-1m.txt",'r', encoding='utf8').read())
@@ -215,8 +220,8 @@ def main(argv):
 
     tags = [u"Eng", u"Spn"]
 
-    # Split on tabs and extract the gold standard tag
-    goldTags = [x.split("\t")[-1].strip() for x in goldStandard.readlines()]
+    # Split on tabs and extract the parameter Corpus tag
+    goldTags = [x.split("\t")[-1].strip() for x in parameterCorpus.readlines()]
     otherSpn = ["NonStSpn", "SpnNoSpace"]
     otherEng = ["NonStEng", "EngNoSpace", "EngNonSt"]
 
