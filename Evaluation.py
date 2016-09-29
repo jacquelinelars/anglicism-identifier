@@ -46,14 +46,13 @@ def toWordsCaseSen(text): # splits on white space
 # Return a transition matrix built from the gold standard
 # Pass in tags for both languages
 def getTransitions(tags, lang1, lang2):
-  transitions = {lang1: {}, lang2: {}}
-  counts = Counter(zip(tags, tags[1:]))
-
-  total = sum(counts.values()) # Get new total for language tags
-
-  for (x, y), c in counts.iteritems(): # Compute transition matrix
-    transitions[x][y] = math.log(c / float(total))
-  return transitions
+    transitions = {lang1: {}, lang2: {}}
+    counts = Counter(zip(tags, tags[1:]))
+    total = sum(counts.values()) # Get new total for language tags
+    for (x, y), c in counts.iteritems(): # Compute transition matrix
+        transitions[x][y] = math.log(c / float(total))
+    print transitions
+    return transitions
 
 class Evaluator:
     def __init__(self, cslm, transitions, tags):
@@ -72,7 +71,7 @@ class Evaluator:
         hmmtags = hmm.generateTags() # generate list of hmm tags
         words = hmm.words # generate list of words
         taggedTokens = []
-        prevLang = "Eng"
+        prevLang = "Spn"
         engTags = []
         spnTags = []
         engTag = ""
@@ -86,6 +85,7 @@ class Evaluator:
             lang = 'Punct' if re.match(token, word) and not word[-1].isalpha() else hmmtags[k]
             lang = 'Num' if word.isdigit() else lang
             # check if word is NE
+            """
             if lang != "Punct":
               index = k % 1000
               if index == 0:
@@ -93,6 +93,11 @@ class Evaluator:
                 spnTags = self.spanClassifier.tag(words[k:k+1000])
               engTag = engTags[index][1]
               spanTag = spnTags[index][1]
+            """
+            if word[0].isupper():
+                engTag = "NamedEnt"
+                spanTag  = "NamedEnt"
+
             else:
               engTag = "O"
               spanTag = "O"
@@ -110,6 +115,9 @@ class Evaluator:
               engProb = round(self.cslm.prob("Eng", word), 2)
               spnProb = round(self.cslm.prob("Spn", word), 2)
               totalProb = (hmmProb + engProb) if lang == "Eng" else (hmmProb + spnProb)
+              #HMMengProb = round(hmmProb + engProb, 2)
+              #HMMspnProb = round(hmmProb + spnProb, 2)
+              print "\t".join([word, lang, NE, anglicism, str(engProb), str(spnProb), str(hmmProb), prevLang])
               prevLang = lang
             else:
               hmmProb = "N/A"
@@ -122,9 +130,9 @@ class Evaluator:
         return taggedTokens
 
     #  Tag testCorpus and write to output file
-    def annotate(self, testCorpus):
+    def annotate(self, testCorpus, file_ending):
         print "Annotation Mode"
-        with io.open(testCorpus.strip(".txt") + '_annotated.txt', 'w', encoding='utf8') as output:
+        with io.open(testCorpus.strip(".txt") + '_annotated' + file_ending, 'w', encoding='utf8') as output:
             text = io.open(testCorpus).read()
             testWords = toWordsCaseSen(text)
             tagged_rows = self.tagger(testWords)
@@ -136,12 +144,12 @@ class Evaluator:
             print "Annotation file written"
 
     #  Evaluate goldStandard and write to output file
-    def evaluate(self, goldStandard):
+    def evaluate(self, goldStandard, file_ending):
         print "Evaluation Mode"
-        with io.open(goldStandard + '_outputwithHMM.txt', 'w', encoding='utf8') as output:
+        with io.open(goldStandard.strip(".tsv") + '-output' + file_ending, 'w', encoding='utf8') as output:
             # create error file
-            error_file = io.open(goldStandard + '_ModelErrors.txt', 'w', encoding='utf8')
-            error_file.write(u'Token\tGS\tAnglicism\tNE\n')
+            error_file = io.open(goldStandard.strip(".tsv") + '-Errors' + file_ending, 'w', encoding='utf8')
+            error_file.write(u'Token\tGS\tErrorType\tEngNgram\tSpnNgram\tNgramDifference\n')
             #create list of text and tags
             lines = io.open(goldStandard, 'r', encoding='utf8').readlines()
             text, gold_tags = [], []
@@ -173,7 +181,9 @@ class Evaluator:
                     else:
                         FalseP += 1
                         evaluations.append("Incorrect")
-                        error_file.write(u"\t".join([tokens[index],gold, ang, NE_tags[index]]) + u"\n")
+                        difference = float(engProbs[index]) - float(spnProbs[index])
+                        error_info = [tokens[index], gold, "FalseP", engProbs[index], spnProbs[index], str(difference)]
+                        error_file.write(u"\t".join(error_info) + u"\n")
                 else:   # if ang ==  'no'
                     # is this token really not an anglicism?
                     if gold != 'Eng':
@@ -182,11 +192,13 @@ class Evaluator:
                     else:
                         FalseN += 1
                         evaluations.append("Incorrect")
-                        error_file.write(u"\t".join([tokens[index],gold, ang, NE_tags[index]]) + u"\n")
+                        difference = float(engProbs[index]) - float(spnProbs[index])
+                        error_info = [tokens[index], gold, "FalseN", engProbs[index], spnProbs[index], str(difference)]
+                        error_file.write(u"\t".join(error_info) + u"\n")
             #write
             Accuracy = (TrueP + TrueN) / float(TrueP + FalseN + TrueN + FalseP)
             Precision = TrueP / float(TrueP + FalseP)
-            Recall = TrueP / float(TrueP + FalseN)
+            Recall =   TrueP / float(TrueP + FalseN)
             output.write(
                 u"Anglicism Accuracy: {}\nAnglicism Precision: {}\nAnglicism Recall: {}\n".format(
                     Accuracy, Precision, Recall))
@@ -206,13 +218,18 @@ Evaluate
 """
 # Evaluation.py goldStandard testCorpus
 def main(argv):
-    parameterCorpus = io.open('./TrainingCorpora/KillerCronicas-GS.tsv', 'r', encoding='utf8')
-    #parameterCorpus = io.open('/Users/jacqueline/Desktop/NACC-GS.tsv','r', encoding='utf8')
-    n = 5
-    #engData = toWords(io.open('./TrainingCorpora/Subtlex.US.trim.txt', 'r', encoding='utf8').read())
-    engData = toWords(io.open("./TrainingCorpora/EngCorpus-1m.txt",'r', encoding='utf8').read())
-    #spnData = toWords(io.open('./TrainingCorpora/ActivEsCorpus.txt', 'r', encoding='utf8').read())
-    spnData = toWords(io.open('./TrainingCorpora/MexCorpus.txt', 'r', encoding='utf8').read())
+    parameterFile = './TrainingCorpora/KillerCronicas-GS.tsv'; parameter = "KC"
+    # parameterFile = '/Users/jacqueline/Desktop/Selected-GS.tsv'; parameter = "Selected"
+    parameterCorpus = io.open(parameterFile, 'r', encoding='utf8')
+
+
+    n = 4
+    file_ending = '-{}Trained-{}gram.txt'.format(parameter, n)
+
+    engData = toWords(io.open('./TrainingCorpora/Subtlex.US.trim.txt', 'r', encoding='utf8').read())
+    #engData = toWords(io.open("./TrainingCorpora/EngCorpus-1m.txt",'r', encoding='utf8').read())
+    spnData = toWords(io.open('./TrainingCorpora/ActivEsCorpus.txt', 'r', encoding='utf8').read())
+    #spnData = toWords(io.open('./TrainingCorpora/MexCorpus.txt', 'r', encoding='utf8').read())
     enModel = CharNGram('Eng', getConditionalCounts(engData, n), n)
     esModel = CharNGram('Spn', getConditionalCounts(spnData, n), n)
 
@@ -232,10 +249,9 @@ def main(argv):
 
     # Compute prior based on gold standard
     transitions = getTransitions(goldTags, tags[0], tags[1])
-
     eval = Evaluator(cslm, transitions, tags)
-    eval.annotate(argv[1])
-    eval.evaluate(argv[0])
+    #eval.annotate(argv[1], file_ending)
+    eval.evaluate(argv[0], file_ending)
 
     #  Use an array of arguments?
     #  Should user pass in number of characters, number of languages, names of
