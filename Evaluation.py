@@ -10,6 +10,9 @@ from collections import Counter
 from CharNGram import *
 from CodeSwitchedLanguageModel import CodeSwitchedLanguageModel
 import math
+from pattern.en import parse as engParse
+from pattern.es import parse as spnParse
+
 # import csv
 
 """ Splits text input into words and formats them, splitting by whitespace
@@ -51,7 +54,6 @@ def getTransitions(tags, lang1, lang2):
     total = sum(counts.values()) # Get new total for language tags
     for (x, y), c in counts.iteritems(): # Compute transition matrix
         transitions[x][y] = math.log(c / float(total))
-    print transitions
     return transitions
 
 class Evaluator:
@@ -106,27 +108,33 @@ class Evaluator:
             if engTag != 'O' or spanTag != 'O':
                 NE = "{}/{}".format(engTag, spanTag)
             else:
+
                 NE = "O"
                 if lang == "Eng":
                     anglicism = "yes"
             # record probabilities
             if lang in ("Eng", "Spn"):
-              hmmProb = round(hmm.transitions[prevLang][lang], 2)
-              engProb = round(self.cslm.prob("Eng", word), 2)
-              spnProb = round(self.cslm.prob("Spn", word), 2)
-              totalProb = (hmmProb + engProb) if lang == "Eng" else (hmmProb + spnProb)
-              #HMMengProb = round(hmmProb + engProb, 2)
-              #HMMspnProb = round(hmmProb + spnProb, 2)
-              print "\t".join([word, lang, NE, anglicism, str(engProb), str(spnProb), str(hmmProb), prevLang])
-              prevLang = lang
+                hmmProb = round(hmm.transitions[prevLang][lang], 2)
+                engProb = round(self.cslm.prob("Eng", word), 2)
+                spnProb = round(self.cslm.prob("Spn", word), 2)
+                totalProb = (hmmProb + engProb) if lang == "Eng" else (hmmProb + spnProb)
+                #HMMengProb = round(hmmProb + engProb, 2)
+                #HMMspnProb = round(hmmProb + spnProb, 2)
+                if lang == "Eng":
+                    tokenParse = engParse(word, lemmata=True)
+                    lemma = tokenParse.split("/")[4]
+                else:
+                    tokenParse = spnParse(word, lemmata=True)
+                    lemma = tokenParse.split("/")[4]
+                #print "\t".join([word, lang, NE, anglicism, str(engProb), str(spnProb), str(hmmProb), prevLang])
+                prevLang = lang
             else:
-              hmmProb = "N/A"
-              engProb = "N/A"
-              spnProb = "N/A"
-              totalProb = "N/A"
-
-            #taggedTokens.append((word, lang, NE, anglicism, str(engProb), str(spnProb), str(hmmProb), str(totalProb)))
-            taggedTokens.append((word, lang, NE, anglicism, str(engProb), str(spnProb)))
+                hmmProb = "N/A"
+                engProb = "N/A"
+                spnProb = "N/A"
+                totalProb = "N/A"
+                lemma = word
+            taggedTokens.append((word, lemma, lang, NE, anglicism, str(engProb), str(spnProb)))
         return taggedTokens
 
     #  Tag testCorpus and write to output file
@@ -137,7 +145,7 @@ class Evaluator:
             testWords = toWordsCaseSen(text)
             tagged_rows = self.tagger(testWords)
             #output.write(u"Token\tLanguage\tNamed Entity\tAnglicism\tEng-NGram Prob\tSpn-NGram Prob\tHMM Prob\tTotal Prob\n")
-            output.write(u"Token\tLanguage\tNamed Entity\tAnglicism\tEng-NGram Prob\tSpn-NGram Prob\n")
+            output.write(u"Token\tLemma\tLanguage\tNamed Entity\tAnglicism\tEng-NGram Prob\tSpn-NGram Prob\n")
             for row in tagged_rows:
                 csv_row = '\t'.join([unicode(s) for s in row]) + u"\n"
                 output.write(csv_row)
@@ -159,7 +167,7 @@ class Evaluator:
                 gold_tags.append(columns[-1].strip())
             # annotate text with model
             annotated_output = self.tagger(text)
-            tokens, lang_tags, NE_tags, anglicism_tags, engProbs, spnProbs = map(list, zip(*annotated_output))
+            tokens, lemmas, lang_tags, NE_tags, anglicism_tags, engProbs, spnProbs = map(list, zip(*annotated_output))
             #tokens, lang_tags, NE_tags, anglicism_tags, engProbs, spnProbs, hmmProbs, totalProbs = map(list, zip(*annotated_output))
 
             # set counters to 0
@@ -203,8 +211,8 @@ class Evaluator:
                 u"Anglicism Accuracy: {}\nAnglicism Precision: {}\nAnglicism Recall: {}\n".format(
                     Accuracy, Precision, Recall))
             output.write(
-                u"Token\tGold Standard\tTagged Language\tNamed Entity\tAnglicism\tEvaluation\n")
-            for all_columns in zip(text, gold_tags, lang_tags, NE_tags, anglicism_tags, evaluations):
+                u"Token\tLemma\tGold Standard\tTagged Language\tNamed Entity\tAnglicism\tEvaluation\n")
+            for all_columns in zip(text, lemmas, gold_tags, lang_tags, NE_tags, anglicism_tags, evaluations):
                 output.write(u"\t".join(all_columns) + u"\n")
             print "Evaluation file written"
 
@@ -250,7 +258,7 @@ def main(argv):
     # Compute prior based on gold standard
     transitions = getTransitions(goldTags, tags[0], tags[1])
     eval = Evaluator(cslm, transitions, tags)
-    #eval.annotate(argv[1], file_ending)
+    eval.annotate(argv[1], file_ending)
     eval.evaluate(argv[0], file_ending)
 
     #  Use an array of arguments?
