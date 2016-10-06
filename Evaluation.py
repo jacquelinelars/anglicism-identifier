@@ -1,6 +1,6 @@
 #  Evaluation.py
 #  Using Python 2.7.11
-#trial line August 11, 2016
+# threshold approach
 import sys
 import re
 import io
@@ -10,10 +10,8 @@ from collections import Counter
 from CharNGram import *
 from CodeSwitchedLanguageModel import CodeSwitchedLanguageModel
 import math
-from pattern.en import parse as engParse
-from pattern.es import parse as spnParse
 
-# import csv
+
 
 """ Splits text input into words and formats them, splitting by whitespace
 
@@ -21,7 +19,7 @@ from pattern.es import parse as spnParse
     @return a list of formatted words
 """
 # case-insensitive tokenizer for ngram probabilities only
-
+print "hello"
 
 def toWords(text):  # separates punctuation
     # requires utf-8 encoding
@@ -69,73 +67,16 @@ class Evaluator:
             "../stanford-ner-2015-04-20/stanford-ner.jar")
 
     def tagger(self, text_list):
+        annotation_lists = []
         hmm = HiddenMarkovModel(text_list, self.tags, self.transitions, self.cslm)
-        hmmtags = hmm.generateTags() # generate list of hmm tags
-        words = hmm.words # generate list of words
-        taggedTokens = []
-        prevLang = "Spn"
-        engTags = []
-        spnTags = []
-        engTag = ""
-        spanTag = ""
-        token = re.compile(ur'[^\w\s]', re.UNICODE)
-        print "Tagging {} words".format(len(words))
-        for k, word in enumerate(words):
-            # check if punctuation else use hmmtag
-            anglicism = "no"
-            #lang = 'Punct' if word in string.punctuation else hmmtags[k]
-            lang = 'Punct' if re.match(token, word) and not word[-1].isalpha() else hmmtags[k]
-            lang = 'Num' if word.isdigit() else lang
-            # check if word is NE
-            """
-            if lang != "Punct":
-              index = k % 1000
-              if index == 0:
-                engTags = self.engClassifier.tag(words[k:k+1000])
-                spnTags = self.spanClassifier.tag(words[k:k+1000])
-              engTag = engTags[index][1]
-              spanTag = spnTags[index][1]
-            """
-            if word[0].isupper():
-                engTag = "NamedEnt"
-                spanTag  = "NamedEnt"
-
-            else:
-              engTag = "O"
-              spanTag = "O"
-
-            # mark as NE if either classifier identifies it
-            if engTag != 'O' or spanTag != 'O':
-                NE = "{}/{}".format(engTag, spanTag)
-            else:
-
-                NE = "O"
-                if lang == "Eng":
-                    anglicism = "yes"
-            # record probabilities
-            if lang in ("Eng", "Spn"):
-                hmmProb = round(hmm.transitions[prevLang][lang], 2)
-                engProb = round(self.cslm.prob("Eng", word), 2)
-                spnProb = round(self.cslm.prob("Spn", word), 2)
-                totalProb = (hmmProb + engProb) if lang == "Eng" else (hmmProb + spnProb)
-                #HMMengProb = round(hmmProb + engProb, 2)
-                #HMMspnProb = round(hmmProb + spnProb, 2)
-                if lang == "Eng":
-                    tokenParse = engParse(word, lemmata=True)
-                    lemma = tokenParse.split("/")[4]
-                else:
-                    tokenParse = spnParse(word, lemmata=True)
-                    lemma = tokenParse.split("/")[4]
-                #print "\t".join([word, lang, NE, anglicism, str(engProb), str(spnProb), str(hmmProb), prevLang])
-                prevLang = lang
-            else:
-                hmmProb = "N/A"
-                engProb = "N/A"
-                spnProb = "N/A"
-                totalProb = "N/A"
-                lemma = word
-            taggedTokens.append((word, lemma, lang, NE, anglicism, str(engProb), str(spnProb)))
-        return taggedTokens
+        annotation_lists.append(text_list)
+        annotation_lists.append(hmm.lemmas)
+        annotation_lists.append(hmm.lang)
+        annotation_lists.append(hmm.NE)
+        annotation_lists.append(hmm.ang)
+        annotation_lists.append(hmm.engProbs)
+        annotation_lists.append(hmm.spnProbs)
+        return annotation_lists
 
     #  Tag testCorpus and write to output file
     def annotate(self, testCorpus, file_ending):
@@ -144,7 +85,7 @@ class Evaluator:
             text = io.open(testCorpus).read()
             testWords = toWordsCaseSen(text)
             tagged_rows = self.tagger(testWords)
-            #output.write(u"Token\tLanguage\tNamed Entity\tAnglicism\tEng-NGram Prob\tSpn-NGram Prob\tHMM Prob\tTotal Prob\n")
+
             output.write(u"Token\tLemma\tLanguage\tNamed Entity\tAnglicism\tEng-NGram Prob\tSpn-NGram Prob\n")
             for row in tagged_rows:
                 csv_row = '\t'.join([unicode(s) for s in row]) + u"\n"
@@ -232,7 +173,8 @@ def main(argv):
 
 
     n = 4
-    file_ending = '-{}Trained-{}gram.txt'.format(parameter, n)
+    #file_ending = '-{}Trained-{}gram.txt'.format(parameter, n)
+    file_ending = '-{}Trained-4threshold.txt'.format(parameter)
 
     engData = toWords(io.open('./TrainingCorpora/Subtlex.US.trim.txt', 'r', encoding='utf8').read())
     #engData = toWords(io.open("./TrainingCorpora/EngCorpus-1m.txt",'r', encoding='utf8').read())

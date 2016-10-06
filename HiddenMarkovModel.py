@@ -3,87 +3,92 @@
 
 import math
 import CodeSwitchedLanguageModel
+import re
+import io
+from pattern.en import parse as engParse
+from pattern.es import parse as spnParse
+
+SpnDict = io.open('./TrainingCorpora/lemario-20101017.txt', 'r', encoding='utf8').read().split("\n")
+
 
 class HiddenMarkovModel:
-  def __init__(self, words, tagSet, transitions, cslm):
-    self.words = words
-    self.tagSet = tagSet
-    self.transitions = transitions
-    self.cslm = cslm
-    self.v = [[Node(0, 0) for _ in xrange(len(tagSet))] for _ in xrange(len(words))]
-
-  # Run Viterbi algorithm and retrace to compute most likely transitions
-  def generateTags(self):
-    self.viterbi()
-    return self.retrace()
-
-  # Return emission probability
-  def em(self, ctx, word):
-    return self.cslm.prob(ctx, word)
-
-  # Return transmission probability
-  def tr(self, ctx, tag):
-    return self.transitions[ctx][tag]
-
-  def viterbi(self):
-    # Equal probability of starting with either tag
-    for k, tag in enumerate(self.tagSet):
-      self.v[0][k] = Node(math.log(0.5), k)
-
-    for wordIndex, word in enumerate(self.words):
-      if wordIndex == 0:
-        pass
-      for tagIndex, tag in enumerate(self.tagSet):
-        # Using map
-        # transitionProbs = map(lambda x: Node(self.v[wordIndex - 1][x].prob +
-        #       math.log(self.tr(self.tagSet[x], self.tagSet[tagIndex])), x),
-        #       xrange(len(self.tagSet)))
-
-        # Using list comprehension
-        # transitionProbs = [Node(self.v[wordIndex - 1][x].prob +
-        #   math.log(tr(self.tagSet[x], self.tagSet[tagIndex])), x) for x in
-        #   xrange(len(self.tagSet))]
-
-        # Using loop
-        transitionProbs = []
-        for x, unusedtag in enumerate(self.tagSet):
-          transitionProbs.append(Node(self.v[wordIndex - 1][x].prob + self.tr(self.tagSet[x], self.tagSet[tagIndex]), x))
+    def __init__(self, words, tagSet, transitions, cslm):
+        self.words = words
+        self.tagSet = tagSet
+        self.transitions = transitions
+        self.cslm = cslm
+        self.lemmas = []
+        self.lang = []
+        self.NE = []
+        self.ang = []
+        self.engProbs = []
+        self.spnProbs = []
+        self._generateTags()
 
 
-        maxNode = reduce(lambda n1, n2: n1 if n1.prob > n2.prob else n2, transitionProbs)
-        emissionProb = self.em(self.tagSet[tagIndex], self.words[wordIndex])
-        self.v[wordIndex][tagIndex] = Node(emissionProb + maxNode.prob, maxNode.prevTag)
+    def _generateTags(self):
+        print "Tagging {} words".format(len(self.words))
 
-  def retrace(self):
-    tags = ["" for i in xrange(len(self.words))]
 
-    # Find most probable final tag
+        token = re.compile(ur'[^\w\s]', re.UNICODE)
+        for k, word in enumerate(self.words):
 
-    # Using reduce
-    last = reduce(lambda x, y: x if self.v[len(self.words) - 1][x].prob >
-           self.v[len(self.words) - 1][y].prob else y, xrange(len(self.tagSet)))
+            # determine NE
+            if word[0].isupper():
+                self.NE.append("Yes")
+                NE = "Yes"
+            else:
+                self.NE.append("No")
+                NE = "No"
 
-    # Using loops
-    # last = 0
-    # for x, taglist in enumerate(self.tagSet):
-    #   for y, tag in enumerate(taglist):
-    #     if self.v[len(self.words) - 1][x].prob > self.v[len(self.words) - 1][y].prob:
-    #       last = x
-    #     else:
-    #       last = y
+            # annotate punct and move to next token
+            if re.match(token, word):
+                self.lang.append('Punct')
+                self.ang.append('No')
+                self.lemma.append(word)
+                continue
 
-    tags[len(self.words) - 1] = self.tagSet[last]
+            # annotate numbers and move to next token
+            elif word.isdigit():
+                self.lang.append('Num')
+                self.ang.append('No')
+                self.lemma.append(word)
+                continue
 
-    # Follow backpointers to most probable previous tags
-    prev = self.v[len(self.words) - 1][last].prevTag
-    for k in xrange(len(self.words) - 2, -1, -1):
-      tags[k] = self.tagSet[prev]
-      prev = self.v[k][prev].prevTag
 
-    return tags
+            # for lexical tokens determine lang tag
 
-class Node:
-  def __init__(self, prob, prevTag):
-    self.prob = prob
-    self.prevTag = prevTag
+            engProb = self.cslm.prob("Eng", word); self.engProbs.append(engProb)
+            spnProb = self.cslm.prob("Spn", word); self.spnProbs.append(engProb)
+            spnTokenParse = spnParse(word, lemmata=True)
+            spnLemma = spnTokenParse.split("/")[4]
 
+            # words within the threshold
+            if 0 < engProb - spnProb < 4:
+                if spnLemma in SpnDict:
+                    lang = "Spn"
+            else:
+                lang = self.cslm.guess(word)
+
+                if lang == "Eng":
+                    engTokenParse = engParse(word, lemmata=True)
+                    engLemma = engTokenParse.split("/")[4]
+                    self.lemma.append(engLemma)
+                    self.lang.append(lang)
+                    if NE == "No":
+                        self.ang.append("Yes")
+                    else:
+                        self.ang.append("No")
+                else:
+                    self.lemma.append(spnLemma)
+                    self.lang.append(lang)
+                    self.ang.append("No")
+
+
+            #print "\t".join([word, lang, NE, anglicism, str(engProb), str(spnProb), str(hmmProb), prevLang])
+            prevLang = lang
+            hmmProb = "N/A"
+            engProb = "N/A"
+            spnProb = "N/A"
+            totalProb = "N/A"
+            lemma = word
