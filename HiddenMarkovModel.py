@@ -6,10 +6,14 @@ import CodeSwitchedLanguageModel
 import re
 import io
 from pattern.en import parse as engParse
-from pattern.es import parse as spnParse
+#from pattern.es import parse as spnParse
+import os
+from treetagger import TreeTagger
+Spntt = TreeTagger(language='spanish')
+#Engtt = TreeTagger(language='english')
 
 SpnDict = io.open('./TrainingCorpora/lemario-20101017.txt', 'r', encoding='utf8').read().split("\n")
-
+os.system("export TREETAGGER_HOME='/Applications/Tree_Tagger/cmd'")
 
 class HiddenMarkovModel:
     def __init__(self, words, tagSet, cslm):
@@ -65,14 +69,21 @@ class HiddenMarkovModel:
 
             # for lexical tokens determine lang tag
 
-            engProb = self.cslm.prob("Eng", word); self.engProbs.append(engProb)
+
             spnProb = self.cslm.prob("Spn", word); self.spnProbs.append(spnProb)
+            """
             spnTokenParse = spnParse(word, lemmata=True)
             spnLemma = spnTokenParse.split("/")[4]
+            """
+            engProb = self.cslm.prob("Eng", word); self.engProbs.append(engProb)
             engTokenParse = engParse(word, lemmata=True)
             engLemma = engTokenParse.split("/")[4]
+
+            spnLemma = Spntt.tag(word)[0][2]
+            spnLemma = word if spnLemma == u"unknown" else spnLemma
+            spnLemma = spnLemma.split("|")[0] if "|" in spnLemma else spnLemma
             # words within the threshold
-            if 0 < engProb - spnProb < 5.5:
+            if 0 < engProb - spnProb < 5.7:
                 if spnLemma in SpnDict:
                     self.lemmas.append(spnLemma)
                     self.lang.append("Spn")

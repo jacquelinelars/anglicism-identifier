@@ -19,7 +19,7 @@ import math
     @return a list of formatted words
 """
 # case-insensitive tokenizer for ngram probabilities only
-print "hello"
+print "Welcome/Bienvenidos"
 
 def toWords(text):  # separates punctuation
     # requires utf-8 encoding
@@ -166,7 +166,7 @@ def main(argv):
 
     n = 4
     #file_ending = '-{}Trained-{}gram.txt'.format(parameter, n)
-    file_ending = '-5.7threshold-4gram.txt'
+    file_ending = '-5.7threshold-4gram-TT.txt'
 
     engData = toWords(io.open('./TrainingCorpora/Subtlex.US.trim.txt', 'r', encoding='utf8').read())
     #engData = toWords(io.open("./TrainingCorpora/EngCorpus-1m.txt",'r', encoding='utf8').read())
