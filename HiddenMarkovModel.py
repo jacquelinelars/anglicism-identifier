@@ -12,10 +12,9 @@ SpnDict = io.open('./TrainingCorpora/lemario-20101017.txt', 'r', encoding='utf8'
 
 
 class HiddenMarkovModel:
-    def __init__(self, words, tagSet, transitions, cslm):
+    def __init__(self, words, tagSet, cslm):
         self.words = words
         self.tagSet = tagSet
-        self.transitions = transitions
         self.cslm = cslm
         self.lemmas = []
         self.lang = []
@@ -35,60 +34,66 @@ class HiddenMarkovModel:
 
             # determine NE
             if word[0].isupper():
-                self.NE.append("Yes")
-                NE = "Yes"
+                self.NE.append("NE")
+                NE = "NE"
             else:
-                self.NE.append("No")
-                NE = "No"
+                self.NE.append("0")
+                NE = "0"
 
             # annotate punct and move to next token
             if re.match(token, word):
                 self.lang.append('Punct')
                 self.ang.append('No')
-                self.lemma.append(word)
+                self.lemmas.append(word)
+                self.engProbs.append("NA")
+                self.spnProbs.append("NA")
                 continue
 
             # annotate numbers and move to next token
-            elif word.isdigit():
+            num = "no"
+            for char in word:
+                if char.isdigit():
+                    num = "yes"
+            if num == "yes":
                 self.lang.append('Num')
                 self.ang.append('No')
-                self.lemma.append(word)
+                self.lemmas.append(word)
+                self.engProbs.append("NA")
+                self.spnProbs.append("NA")
                 continue
 
 
             # for lexical tokens determine lang tag
 
             engProb = self.cslm.prob("Eng", word); self.engProbs.append(engProb)
-            spnProb = self.cslm.prob("Spn", word); self.spnProbs.append(engProb)
+            spnProb = self.cslm.prob("Spn", word); self.spnProbs.append(spnProb)
             spnTokenParse = spnParse(word, lemmata=True)
             spnLemma = spnTokenParse.split("/")[4]
-
+            engTokenParse = engParse(word, lemmata=True)
+            engLemma = engTokenParse.split("/")[4]
             # words within the threshold
-            if 0 < engProb - spnProb < 4:
+            if 0 < engProb - spnProb < 5.5:
                 if spnLemma in SpnDict:
-                    lang = "Spn"
+                    self.lemmas.append(spnLemma)
+                    self.lang.append("Spn")
+                    self.ang.append("No")
+                else:
+                    self.lemmas.append(engLemma)
+                    self.lang.append("Eng")
+                    if NE == "0":
+                        self.ang.append("Yes")
+                    else:
+                        self.ang.append("No")
             else:
                 lang = self.cslm.guess(word)
-
+                self.lang.append(lang)
                 if lang == "Eng":
-                    engTokenParse = engParse(word, lemmata=True)
-                    engLemma = engTokenParse.split("/")[4]
-                    self.lemma.append(engLemma)
-                    self.lang.append(lang)
-                    if NE == "No":
+                    self.lemmas.append(engLemma)
+                    if NE == "0":
                         self.ang.append("Yes")
                     else:
                         self.ang.append("No")
                 else:
-                    self.lemma.append(spnLemma)
-                    self.lang.append(lang)
+                    self.lemmas.append(spnLemma)
                     self.ang.append("No")
 
-
-            #print "\t".join([word, lang, NE, anglicism, str(engProb), str(spnProb), str(hmmProb), prevLang])
-            prevLang = lang
-            hmmProb = "N/A"
-            engProb = "N/A"
-            spnProb = "N/A"
-            totalProb = "N/A"
-            lemma = word

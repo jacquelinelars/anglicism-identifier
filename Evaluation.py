@@ -55,9 +55,8 @@ def getTransitions(tags, lang1, lang2):
     return transitions
 
 class Evaluator:
-    def __init__(self, cslm, transitions, tags):
+    def __init__(self, cslm, tags):
         self.cslm = cslm
-        self.transitions = transitions
         self.tags = tags
         self.engClassifier = StanfordNERTagger(
             "../stanford-ner-2015-04-20/classifiers/english.all.3class.distsim.crf.ser.gz",
@@ -68,14 +67,11 @@ class Evaluator:
 
     def tagger(self, text_list):
         annotation_lists = []
-        hmm = HiddenMarkovModel(text_list, self.tags, self.transitions, self.cslm)
-        annotation_lists.append(text_list)
-        annotation_lists.append(hmm.lemmas)
-        annotation_lists.append(hmm.lang)
-        annotation_lists.append(hmm.NE)
-        annotation_lists.append(hmm.ang)
-        annotation_lists.append(hmm.engProbs)
-        annotation_lists.append(hmm.spnProbs)
+        hmm = HiddenMarkovModel(text_list, self.tags, self.cslm)
+        annotation_lists = zip(text_list, hmm.lemmas, hmm.lang, hmm.NE, hmm.ang, hmm.engProbs, hmm.spnProbs)
+        print "Lengths"
+        for alist in (text_list, hmm.lemmas, hmm.lang, hmm.NE, hmm.ang, hmm.engProbs, hmm.spnProbs):
+            print len(alist)
         return annotation_lists
 
     #  Tag testCorpus and write to output file
@@ -109,7 +105,6 @@ class Evaluator:
             # annotate text with model
             annotated_output = self.tagger(text)
             tokens, lemmas, lang_tags, NE_tags, anglicism_tags, engProbs, spnProbs = map(list, zip(*annotated_output))
-            #tokens, lang_tags, NE_tags, anglicism_tags, engProbs, spnProbs, hmmProbs, totalProbs = map(list, zip(*annotated_output))
 
             # set counters to 0
             TrueP = FalseN = TrueN = FalseP = 0
@@ -119,10 +114,10 @@ class Evaluator:
             for index, tags in enumerate(zip(anglicism_tags, gold_tags)):
                 ang = tags[0]
                 gold = tags[1]
-                if gold == "punc":
+                if gold == "punc" or gold == "num":
                     evaluations.append("NA")
                     continue
-                if ang == "yes":
+                if ang == "Yes":
                     # is this token really  an anglicism?
                     if gold == 'Eng':
                         TrueP += 1 #yay! correction prediction
@@ -130,27 +125,28 @@ class Evaluator:
                     else:
                         FalseP += 1
                         evaluations.append("Incorrect")
-                        difference = float(engProbs[index]) - float(spnProbs[index])
-                        error_info = [tokens[index], gold, "FalseP", engProbs[index], spnProbs[index], str(difference)]
+                        difference = engProbs[index] - spnProbs[index]
+                        error_info = [tokens[index], gold, "FalseP", str(engProbs[index]), str(spnProbs[index]), str(difference)]
                         error_file.write(u"\t".join(error_info) + u"\n")
                 else:   # if ang ==  'no'
                     # is this token really not an anglicism?
                     if gold != 'Eng':
-                        TrueN +=1 #yay! correction prediction
+                        TrueN += 1 #yay! correction prediction
                         evaluations.append("Correct")
                     else:
                         FalseN += 1
                         evaluations.append("Incorrect")
-                        difference = float(engProbs[index]) - float(spnProbs[index])
-                        error_info = [tokens[index], gold, "FalseN", engProbs[index], spnProbs[index], str(difference)]
+                        difference = engProbs[index] - spnProbs[index]
+                        error_info = [tokens[index], gold, "FalseN", str(engProbs[index]), str(spnProbs[index]), str(difference)]
                         error_file.write(u"\t".join(error_info) + u"\n")
             #write
             Accuracy = (TrueP + TrueN) / float(TrueP + FalseN + TrueN + FalseP)
             Precision = TrueP / float(TrueP + FalseP)
             Recall =   TrueP / float(TrueP + FalseN)
+            fScore = 2*Precision*Recall/float(Precision + Recall)
             output.write(
-                u"Anglicism Accuracy: {}\nAnglicism Precision: {}\nAnglicism Recall: {}\n".format(
-                    Accuracy, Precision, Recall))
+                u"Accuracy: {}\Precision: {}\Recall: {}\F-Score: {}\n".format(
+                    Accuracy, Precision, Recall, fScore))
             output.write(
                 u"Token\tLemma\tGold Standard\tTagged Language\tNamed Entity\tAnglicism\tEvaluation\n")
             for all_columns in zip(text, lemmas, gold_tags, lang_tags, NE_tags, anglicism_tags, evaluations):
@@ -167,14 +163,10 @@ Evaluate
 """
 # Evaluation.py goldStandard testCorpus
 def main(argv):
-    parameterFile = './TrainingCorpora/KillerCronicas-GS.tsv'; parameter = "KC"
-    # parameterFile = '/Users/jacqueline/Desktop/Selected-GS.tsv'; parameter = "Selected"
-    parameterCorpus = io.open(parameterFile, 'r', encoding='utf8')
-
 
     n = 4
     #file_ending = '-{}Trained-{}gram.txt'.format(parameter, n)
-    file_ending = '-{}Trained-4threshold.txt'.format(parameter)
+    file_ending = '-5.7threshold-4gram.txt'
 
     engData = toWords(io.open('./TrainingCorpora/Subtlex.US.trim.txt', 'r', encoding='utf8').read())
     #engData = toWords(io.open("./TrainingCorpora/EngCorpus-1m.txt",'r', encoding='utf8').read())
@@ -187,19 +179,11 @@ def main(argv):
 
     tags = [u"Eng", u"Spn"]
 
-    # Split on tabs and extract the parameter Corpus tag
-    goldTags = [x.split("\t")[-1].strip() for x in parameterCorpus.readlines()]
-    otherSpn = ["NonStSpn", "SpnNoSpace"]
-    otherEng = ["NonStEng", "EngNoSpace", "EngNonSt"]
 
-    # Convert all tags to either Eng or Spn and remove others
-    goldTags = ["Eng" if x in otherEng else x for x in goldTags]
-    goldTags = ["Spn" if x in otherSpn else x for x in goldTags]
-    goldTags = [x for x in goldTags if x in ("Eng", "Spn")]
 
     # Compute prior based on gold standard
-    transitions = getTransitions(goldTags, tags[0], tags[1])
-    eval = Evaluator(cslm, transitions, tags)
+    #transitions = getTransitions(goldTags, tags[0], tags[1])
+    eval = Evaluator(cslm, tags)
     eval.annotate(argv[1], file_ending)
     eval.evaluate(argv[0], file_ending)
 
