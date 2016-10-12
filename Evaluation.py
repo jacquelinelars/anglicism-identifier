@@ -77,7 +77,7 @@ class Evaluator:
     #  Tag testCorpus and write to output file
     def annotate(self, testCorpus, file_ending):
         print "Annotation Mode"
-        with io.open(testCorpus.strip(".txt") + '_annotated' + file_ending, 'w', encoding='utf8') as output:
+        with io.open(re.sub("\.txt$", "", testCorpus) + '_annotated' + file_ending, 'w', encoding='utf8') as output:
             text = io.open(testCorpus).read()
             testWords = toWordsCaseSen(text)
             tagged_rows = self.tagger(testWords)
@@ -94,7 +94,7 @@ class Evaluator:
         with io.open(goldStandard.strip(".tsv") + '-output' + file_ending, 'w', encoding='utf8') as output:
             # create error file
             error_file = io.open(goldStandard.strip(".tsv") + '-Errors' + file_ending, 'w', encoding='utf8')
-            error_file.write(u'Token\tGS\tErrorType\tEngNgram\tSpnNgram\tNgramDifference\n')
+            error_file.write(u'Token\tGS\tLemma\tErrorType\tEngNgram\tSpnNgram\tNgramDifference\n')
             #create list of text and tags
             lines = io.open(goldStandard, 'r', encoding='utf8').readlines()
             text, gold_tags = [], []
@@ -126,7 +126,7 @@ class Evaluator:
                         FalseP += 1
                         evaluations.append("Incorrect")
                         difference = engProbs[index] - spnProbs[index]
-                        error_info = [tokens[index], gold, "FalseP", str(engProbs[index]), str(spnProbs[index]), str(difference)]
+                        error_info = [tokens[index], gold, lemmas[index], "FalseP", str(engProbs[index]), str(spnProbs[index]), str(difference)]
                         error_file.write(u"\t".join(error_info) + u"\n")
                 else:   # if ang ==  'no'
                     # is this token really not an anglicism?
@@ -137,7 +137,7 @@ class Evaluator:
                         FalseN += 1
                         evaluations.append("Incorrect")
                         difference = engProbs[index] - spnProbs[index]
-                        error_info = [tokens[index], gold, "FalseN", str(engProbs[index]), str(spnProbs[index]), str(difference)]
+                        error_info = [tokens[index], gold, lemmas[index], "FalseN", str(engProbs[index]), str(spnProbs[index]), str(difference)]
                         error_file.write(u"\t".join(error_info) + u"\n")
             #write
             Accuracy = (TrueP + TrueN) / float(TrueP + FalseN + TrueN + FalseP)
@@ -145,7 +145,7 @@ class Evaluator:
             Recall =   TrueP / float(TrueP + FalseN)
             fScore = 2*Precision*Recall/float(Precision + Recall)
             output.write(
-                u"Accuracy: {}\Precision: {}\Recall: {}\F-Score: {}\n".format(
+                u"Accuracy: {}\nPrecision: {}\nRecall: {}\nF-Score: {}\n".format(
                     Accuracy, Precision, Recall, fScore))
             output.write(
                 u"Token\tLemma\tGold Standard\tTagged Language\tNamed Entity\tAnglicism\tEvaluation\n")
@@ -166,7 +166,7 @@ def main(argv):
 
     n = 4
     #file_ending = '-{}Trained-{}gram.txt'.format(parameter, n)
-    file_ending = '-5.7threshold-4gram-TT.txt'
+    file_ending = '-5.7TH-4gram-Parse.tsv'
 
     engData = toWords(io.open('./TrainingCorpora/Subtlex.US.trim.txt', 'r', encoding='utf8').read())
     #engData = toWords(io.open("./TrainingCorpora/EngCorpus-1m.txt",'r', encoding='utf8').read())
@@ -184,7 +184,7 @@ def main(argv):
     # Compute prior based on gold standard
     #transitions = getTransitions(goldTags, tags[0], tags[1])
     eval = Evaluator(cslm, tags)
-    eval.annotate(argv[1], file_ending)
+    #eval.annotate(argv[1], file_ending)
     eval.evaluate(argv[0], file_ending)
 
     #  Use an array of arguments?
