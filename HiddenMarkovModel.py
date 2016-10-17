@@ -3,87 +3,104 @@
 
 import math
 import CodeSwitchedLanguageModel
+import re
+import io
+from pattern.en import parse as engParse
+from pattern.es import parse as spnParse
+import os
+
+
+SpnDict = io.open('./TrainingCorpora/lemario-20101017.txt', 'r', encoding='utf8').read().split("\n")
+EngDict = io.open('./TrainingCorpora/EngDict.txt', 'r', encoding='utf8').read().split("\n")
+
 
 class HiddenMarkovModel:
-  def __init__(self, words, tagSet, transitions, cslm):
-    self.words = words
-    self.tagSet = tagSet
-    self.transitions = transitions
-    self.cslm = cslm
-    self.v = [[Node(0, 0) for _ in xrange(len(tagSet))] for _ in xrange(len(words))]
-
-  # Run Viterbi algorithm and retrace to compute most likely transitions
-  def generateTags(self):
-    self.viterbi()
-    return self.retrace()
-
-  # Return emission probability
-  def em(self, ctx, word):
-    return self.cslm.prob(ctx, word)
-
-  # Return transmission probability
-  def tr(self, ctx, tag):
-    return self.transitions[ctx][tag]
-
-  def viterbi(self):
-    # Equal probability of starting with either tag
-    for k, tag in enumerate(self.tagSet):
-      self.v[0][k] = Node(math.log(0.5), k)
-
-    for wordIndex, word in enumerate(self.words):
-      if wordIndex == 0:
-        pass
-      for tagIndex, tag in enumerate(self.tagSet):
-        # Using map
-        # transitionProbs = map(lambda x: Node(self.v[wordIndex - 1][x].prob +
-        #       math.log(self.tr(self.tagSet[x], self.tagSet[tagIndex])), x),
-        #       xrange(len(self.tagSet)))
-
-        # Using list comprehension
-        # transitionProbs = [Node(self.v[wordIndex - 1][x].prob +
-        #   math.log(tr(self.tagSet[x], self.tagSet[tagIndex])), x) for x in
-        #   xrange(len(self.tagSet))]
-
-        # Using loop
-        transitionProbs = []
-        for x, unusedtag in enumerate(self.tagSet):
-          transitionProbs.append(Node(self.v[wordIndex - 1][x].prob + self.tr(self.tagSet[x], self.tagSet[tagIndex]), x))
+    def __init__(self, words, tagSet, cslm):
+        self.words = words
+        self.tagSet = tagSet
+        self.cslm = cslm
+        self.lemmas = []
+        self.lang = []
+        self.NE = []
+        self.ang = []
+        self.engProbs = []
+        self.spnProbs = []
+        self._generateTags()
 
 
-        maxNode = reduce(lambda n1, n2: n1 if n1.prob > n2.prob else n2, transitionProbs)
-        emissionProb = self.em(self.tagSet[tagIndex], self.words[wordIndex])
-        self.v[wordIndex][tagIndex] = Node(emissionProb + maxNode.prob, maxNode.prevTag)
+    def _generateTags(self):
+        print "Tagging {} words".format(len(self.words))
+        token = re.compile(ur'[^\w\s]', re.UNICODE)
+        for k, word in enumerate(self.words):
+            # determine NE
+            if word[0].isupper():
+                self.NE.append("NE")
+                NE = "NE"
+            else:
+                self.NE.append("0")
+                NE = "0"
 
-  def retrace(self):
-    tags = ["" for i in xrange(len(self.words))]
+            # annotate punct and move to next token
+            if re.match(token, word):
+                self.lang.append('Punct')
+                self.ang.append('No')
+                self.lemmas.append(word)
+                self.engProbs.append("NA")
+                self.spnProbs.append("NA")
+                continue
 
-    # Find most probable final tag
+            # annotate numbers and move to next token
+            num = "no"
+            for char in word:
+                if char.isdigit():
+                    num = "yes"
+            if num == "yes":
+                self.lang.append('Num')
+                self.ang.append('No')
+                self.lemmas.append(word)
+                self.engProbs.append("NA")
+                self.spnProbs.append("NA")
+                continue
 
-    # Using reduce
-    last = reduce(lambda x, y: x if self.v[len(self.words) - 1][x].prob >
-           self.v[len(self.words) - 1][y].prob else y, xrange(len(self.tagSet)))
 
-    # Using loops
-    # last = 0
-    # for x, taglist in enumerate(self.tagSet):
-    #   for y, tag in enumerate(taglist):
-    #     if self.v[len(self.words) - 1][x].prob > self.v[len(self.words) - 1][y].prob:
-    #       last = x
-    #     else:
-    #       last = y
+            # for lexical tokens determine lang tag
+            spnProb = self.cslm.prob("Spn", word); self.spnProbs.append(spnProb)
+            engProb = self.cslm.prob("Eng", word); self.engProbs.append(engProb)
 
-    tags[len(self.words) - 1] = self.tagSet[last]
+            # words within the threshold
+            if 0 < engProb - spnProb < 5.5:
+                spnTokenParse = spnParse(word, lemmata=True)
+                spnLemma = spnTokenParse.split("/")[4]
+                engTokenParse = engParse(word, lemmata=True)
+                engLemma = engTokenParse.split("/")[4]
 
-    # Follow backpointers to most probable previous tags
-    prev = self.v[len(self.words) - 1][last].prevTag
-    for k in xrange(len(self.words) - 2, -1, -1):
-      tags[k] = self.tagSet[prev]
-      prev = self.v[k][prev].prevTag
+                if engLemma not in EngDict or spnLemma in SpnDict:
+                    self.lemmas.append(spnLemma)
+                    self.lang.append("Spn")
+                    self.ang.append("No")
+                else:
 
-    return tags
+                    self.lemmas.append(engLemma)
+                    self.lang.append("Eng")
+                    if NE == "0":
+                        self.ang.append("Yes")
+                    else:
+                        self.ang.append("No")
+            else:
 
-class Node:
-  def __init__(self, prob, prevTag):
-    self.prob = prob
-    self.prevTag = prevTag
+                lang = self.cslm.guess(word)
+                self.lang.append(lang)
+                if lang == "Eng":
+                    engTokenParse = engParse(word, lemmata=True)
+                    engLemma = engTokenParse.split("/")[4]
+                    self.lemmas.append(engLemma)
+                    if NE == "0":
+                        self.ang.append("Yes")
+                    else:
+                        self.ang.append("No")
+                else:
+                    spnTokenParse = spnParse(word, lemmata=True)
+                    spnLemma = spnTokenParse.split("/")[4]
+                    self.lemmas.append(spnLemma)
+                    self.ang.append("No")
 
