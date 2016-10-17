@@ -8,12 +8,11 @@ import io
 from pattern.en import parse as engParse
 from pattern.es import parse as spnParse
 import os
-#from treetagger import TreeTagger
-#Spntt = TreeTagger(language='spanish')
-#Engtt = TreeTagger(language='english')
+
 
 SpnDict = io.open('./TrainingCorpora/lemario-20101017.txt', 'r', encoding='utf8').read().split("\n")
-os.system("export TREETAGGER_HOME='/Applications/Tree_Tagger/cmd'")
+EngDict = io.open('./TrainingCorpora/EngDict.txt', 'r', encoding='utf8').read().split("\n")
+
 
 class HiddenMarkovModel:
     def __init__(self, words, tagSet, cslm):
@@ -31,11 +30,8 @@ class HiddenMarkovModel:
 
     def _generateTags(self):
         print "Tagging {} words".format(len(self.words))
-
-
         token = re.compile(ur'[^\w\s]', re.UNICODE)
         for k, word in enumerate(self.words):
-
             # determine NE
             if word[0].isupper():
                 self.NE.append("NE")
@@ -68,32 +64,22 @@ class HiddenMarkovModel:
 
 
             # for lexical tokens determine lang tag
-
-
             spnProb = self.cslm.prob("Spn", word); self.spnProbs.append(spnProb)
-
-
-
-
             engProb = self.cslm.prob("Eng", word); self.engProbs.append(engProb)
 
             # words within the threshold
-            if 0 < engProb - spnProb < 5.7:
-
+            if 0 < engProb - spnProb < 5.5:
                 spnTokenParse = spnParse(word, lemmata=True)
                 spnLemma = spnTokenParse.split("/")[4]
-                """
-                spnLemma = Spntt.tag(word)[0][2]
-                spnLemma = word + "-UNKNOWN" if spnLemma == u"<unknown>" else spnLemma
-                spnLemma = spnLemma.split("|")[0] if "|" in spnLemma else spnLemma
-                """
-                if spnLemma in SpnDict:
+                engTokenParse = engParse(word, lemmata=True)
+                engLemma = engTokenParse.split("/")[4]
+
+                if engLemma not in EngDict or spnLemma in SpnDict:
                     self.lemmas.append(spnLemma)
                     self.lang.append("Spn")
                     self.ang.append("No")
                 else:
-                    engTokenParse = engParse(word, lemmata=True)
-                    engLemma = engTokenParse.split("/")[4]
+
                     self.lemmas.append(engLemma)
                     self.lang.append("Eng")
                     if NE == "0":
@@ -101,6 +87,7 @@ class HiddenMarkovModel:
                     else:
                         self.ang.append("No")
             else:
+
                 lang = self.cslm.guess(word)
                 self.lang.append(lang)
                 if lang == "Eng":
@@ -114,11 +101,6 @@ class HiddenMarkovModel:
                 else:
                     spnTokenParse = spnParse(word, lemmata=True)
                     spnLemma = spnTokenParse.split("/")[4]
-                    """
-                    spnLemma = Spntt.tag(word)[0][2]
-                    spnLemma = word + "-UNKNOWN" if spnLemma == u"<unknown>" else spnLemma
-                    spnLemma = spnLemma.split("|")[0] if "|" in spnLemma else spnLemma
-                    """
                     self.lemmas.append(spnLemma)
                     self.ang.append("No")
 

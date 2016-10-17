@@ -69,9 +69,6 @@ class Evaluator:
         annotation_lists = []
         hmm = HiddenMarkovModel(text_list, self.tags, self.cslm)
         annotation_lists = zip(text_list, hmm.lemmas, hmm.lang, hmm.NE, hmm.ang, hmm.engProbs, hmm.spnProbs)
-        print "Lengths"
-        for alist in (text_list, hmm.lemmas, hmm.lang, hmm.NE, hmm.ang, hmm.engProbs, hmm.spnProbs):
-            print len(alist)
         return annotation_lists
 
     #  Tag testCorpus and write to output file
@@ -151,6 +148,8 @@ class Evaluator:
                 u"Token\tLemma\tGold Standard\tTagged Language\tNamed Entity\tAnglicism\tEvaluation\n")
             for all_columns in zip(text, lemmas, gold_tags, lang_tags, NE_tags, anglicism_tags, evaluations):
                 output.write(u"\t".join(all_columns) + u"\n")
+            print u"Accuracy\nPrecision\nRecall\nF-Score\n{}\n{}\n{}\n{}".format(
+                    Accuracy, Precision, Recall, fScore)
             print "Evaluation file written"
 
 """
@@ -165,9 +164,8 @@ Evaluate
 def main(argv):
 
     n = 4
-    #file_ending = '-{}Trained-{}gram.txt'.format(parameter, n)
-    file_ending = '-5.7TH-4gram-Parse.tsv'
-
+    file_ending = '-6TH-{}gram-Parse-EngDictLookup-CAPS.tsv'.format(n)
+    print file_ending
     engData = toWords(io.open('./TrainingCorpora/Subtlex.US.trim.txt', 'r', encoding='utf8').read())
     #engData = toWords(io.open("./TrainingCorpora/EngCorpus-1m.txt",'r', encoding='utf8').read())
     spnData = toWords(io.open('./TrainingCorpora/ActivEsCorpus.txt', 'r', encoding='utf8').read())
