@@ -74,24 +74,43 @@ class Evaluator:
     #  Tag testCorpus and write to output file
     def annotate(self, testCorpus, file_ending):
         print "Annotation Mode"
-        with io.open(re.sub("\.txt$", "", testCorpus) + '_annotated' + file_ending, 'w', encoding='utf8') as output:
+        with io.open(re.sub("\.txt$", "", testCorpus) + '-Annotated' +
+                     file_ending, 'w', encoding='utf8') as output:
             text = io.open(testCorpus).read()
             testWords = toWordsCaseSen(text)
             tagged_rows = self.tagger(testWords)
-
+            # create anglicism output file
+            angOutput = io.open(re.sub("\.txt$", "", testCorpus) + '-English' +
+                                 file_ending, 'w', encoding='utf8')
             output.write(u"Token\tLemma\tLanguage\tNamed Entity\tAnglicism\tEng-NGram Prob\tSpn-NGram Prob\n")
+            angOutput.write(u"Anglicisms\n")
+            ang = ""
+            ang_lemma = ""
             for row in tagged_rows:
                 csv_row = '\t'.join([unicode(s) for s in row]) + u"\n"
                 output.write(csv_row)
-            print "Annotation file written"
+                if "Yes" in row:
+                    ang = " ".join([ang, row[0]])
+                    ang_lemma = " ".join([ang_lemma, row[1]])
+                    continue
+                else:
+                    if ang != "":
+                        angOutput.write(ang + "\t" + ang_lemma + "\n")
+                        ang = ""
+                        ang_lemma = ""
+            angOutput.close()
+            print "Annotation files written"
 
     #  Evaluate goldStandard and write to output file
     def evaluate(self, goldStandard, file_ending):
         print "Evaluation Mode"
-        with io.open(goldStandard.strip(".tsv") + '-output' + file_ending, 'w', encoding='utf8') as output:
+        with io.open(goldStandard.strip(".tsv") + '-Output' +
+                     file_ending, 'w', encoding='utf8') as output:
             # create error file
-            error_file = io.open(goldStandard.strip(".tsv") + '-Errors' + file_ending, 'w', encoding='utf8')
-            error_file.write(u'Token\tGS\tLemma\tErrorType\tEngNgram\tSpnNgram\tNgramDifference\n')
+            error_file = io.open(goldStandard.strip(".tsv") + '-Errors' +
+                                 file_ending, 'w', encoding='utf8')
+            error_file.write(
+                u'Token\tGS\tLemma\tErrorType\tEngNgram\tSpnNgram\tNgramDifference\n')
             #create list of text and tags
             lines = io.open(goldStandard, 'r', encoding='utf8').readlines()
             text, gold_tags = [], []
@@ -117,7 +136,7 @@ class Evaluator:
                 if ang == "Yes":
                     # is this token really  an anglicism?
                     if gold == 'Eng':
-                        TrueP += 1 #yay! correction prediction
+                        TrueP += 1  # yay! correction prediction
                         evaluations.append("Correct")
                     else:
                         FalseP += 1
@@ -164,7 +183,8 @@ Evaluate
 def main(argv):
 
     n = 4
-    file_ending = '-6TH-{}gram-Parse-EngDictLookup-CAPS.tsv'.format(n)
+    #file_ending = '-6TH-{}gram-Parse-EngDictLookup-CAPS.tsv'.format(n)
+    file_ending = ".txt"
     print file_ending
     engData = toWords(io.open('./TrainingCorpora/Subtlex.US.trim.txt', 'r', encoding='utf8').read())
     #engData = toWords(io.open("./TrainingCorpora/EngCorpus-1m.txt",'r', encoding='utf8').read())
@@ -182,8 +202,8 @@ def main(argv):
     # Compute prior based on gold standard
     #transitions = getTransitions(goldTags, tags[0], tags[1])
     eval = Evaluator(cslm, tags)
-    #eval.annotate(argv[1], file_ending)
-    eval.evaluate(argv[0], file_ending)
+    eval.annotate(argv[1], file_ending)
+    #eval.evaluate(argv[0], file_ending)
 
     #  Use an array of arguments?
     #  Should user pass in number of characters, number of languages, names of
