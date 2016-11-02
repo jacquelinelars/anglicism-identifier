@@ -4,6 +4,7 @@
 import sys
 import re
 import io
+import os
 from HiddenMarkovModel import HiddenMarkovModel
 from nltk.tag.stanford import StanfordNERTagger
 from collections import Counter
@@ -23,6 +24,7 @@ print "Welcome/Bienvenidos"
 
 def toWords(text):  # separates punctuation
     # requires utf-8 encoding
+    text = re.sub("www\.[^ ]*|https:\/\/[^ ]*", "WEBSITE", text)  # remove websites
     token = re.compile(ur'[\w]+|[^\s\w]', re.UNICODE)
     tokens = re.findall(token, text)
     return [word.lower() for word in tokens]
@@ -38,21 +40,10 @@ def toWordsCaseSen(text): # separates punctuation
     token = re.compile(ur'[\w]+|[^\s\w]', re.UNICODE)
     return re.findall(token, text)
 
-"""
 
-def toWordsCaseSen(text): # splits on white space
-  tokens = re.sub("\t|\n|\r", "", text)
-  return tokens.split()
-"""
 # Return a transition matrix built from the gold standard
 # Pass in tags for both languages
-def getTransitions(tags, lang1, lang2):
-    transitions = {lang1: {}, lang2: {}}
-    counts = Counter(zip(tags, tags[1:]))
-    total = sum(counts.values()) # Get new total for language tags
-    for (x, y), c in counts.iteritems(): # Compute transition matrix
-        transitions[x][y] = math.log(c / float(total))
-    return transitions
+
 
 class Evaluator:
     def __init__(self, cslm, tags):
@@ -80,12 +71,13 @@ class Evaluator:
             testWords = toWordsCaseSen(text)
             tagged_rows = self.tagger(testWords)
             # create anglicism output file
-            angOutput = io.open(re.sub("\.txt$", "", testCorpus) + '-English' +
-                                 file_ending, 'w', encoding='utf8')
+
             output.write(u"Token\tLemma\tLanguage\tNamed Entity\tAnglicism\tEng-NGram Prob\tSpn-NGram Prob\n")
-            angOutput.write(u"Anglicisms\n")
+
             ang = ""
             ang_lemma = ""
+            ang_list = []
+            lemma_dict = {}
             for row in tagged_rows:
                 csv_row = '\t'.join([unicode(s) for s in row]) + u"\n"
                 output.write(csv_row)
@@ -95,11 +87,21 @@ class Evaluator:
                     continue
                 else:
                     if ang != "":
-                        angOutput.write(ang + "\t" + ang_lemma + "\n")
+                        ang_list.append(ang)
+                        lemma_dict[ang] = ang_lemma
                         ang = ""
                         ang_lemma = ""
+            angOutput = io.open(re.sub("\.txt$", "", testCorpus) + '-English' +
+                                 file_ending, 'w', encoding='utf8')
+            angOutput.write(u"English Tokens\tLemma\tCount\n")
+            ang_Counter = Counter(ang_list)
+            ang_total = sum(ang_Counter.itervalues())
+            for ang, count in ang_Counter.most_common():
+                ang_row = '\t'.join([unicode(ang), unicode(count), unicode(lemma_dict[ang])]) + u"\n"
+                angOutput.write(ang_row)
             angOutput.close()
             print "Annotation files written"
+            print ang_total, "English tokens found"
 
     #  Evaluate goldStandard and write to output file
     def evaluate(self, goldStandard, file_ending):
@@ -169,6 +171,9 @@ class Evaluator:
                 output.write(u"\t".join(all_columns) + u"\n")
             print u"Accuracy\nPrecision\nRecall\nF-Score\n{}\n{}\n{}\n{}".format(
                     Accuracy, Precision, Recall, fScore)
+            print "TrueP:", TrueP
+            print "FalseP:", FalseP
+            print "FalseN:", FalseN
             print "Evaluation file written"
 
 """
@@ -184,8 +189,7 @@ def main(argv):
 
     n = 4
     #file_ending = '-6TH-{}gram-Parse-EngDictLookup-CAPS.tsv'.format(n)
-    file_ending = ".txt"
-    print file_ending
+    file_ending = "-5.5TH.tsv"
     engData = toWords(io.open('./TrainingCorpora/Subtlex.US.trim.txt', 'r', encoding='utf8').read())
     #engData = toWords(io.open("./TrainingCorpora/EngCorpus-1m.txt",'r', encoding='utf8').read())
     spnData = toWords(io.open('./TrainingCorpora/ActivEsCorpus.txt', 'r', encoding='utf8').read())
@@ -200,11 +204,10 @@ def main(argv):
 
 
     # Compute prior based on gold standard
-    #transitions = getTransitions(goldTags, tags[0], tags[1])
     eval = Evaluator(cslm, tags)
-    eval.annotate(argv[1], file_ending)
-    #eval.evaluate(argv[0], file_ending)
-
+    #eval.annotate(argv[1], file_ending)
+    eval.evaluate(argv[0], file_ending)
+    os.system('say "your program has finished"')
     #  Use an array of arguments?
     #  Should user pass in number of characters, number of languages, names of
     #  languages?
