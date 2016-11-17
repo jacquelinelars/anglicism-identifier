@@ -33,6 +33,9 @@ class annotationProcessor(object):
         f = open(data_set).readlines()[:5]
         lemma_dict = self._createDict(f)
 
+        for key, evaluations in lemma_dict.items():
+            if any(x.startswith("True") for x in evaluations):
+
 
         Accuracy = (TruePs + TrueNs) / float(TruePs + FalseNs + TrueNs + FalsePs)
         Precision = TruePs / float(TruePs + FalsePs)

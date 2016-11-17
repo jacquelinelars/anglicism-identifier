@@ -12,7 +12,8 @@ from CharNGram import *
 from CodeSwitchedLanguageModel import CodeSwitchedLanguageModel
 import math
 
-
+from pattern.en import parse as engParse
+from pattern.es import parse as spnParse
 
 """ Splits text input into words and formats them, splitting by whitespace
 
@@ -143,6 +144,10 @@ class Evaluator:
                     else:
                         FalseP += 1
                         evaluations.append("Incorrect")
+                        # change lemma to show both lemmas
+                        correctLemma = spnParse(tokens[index], lemmata=True)
+                        lemmas[index] = lemmas[index] + "|" + correctLemma
+                        # write to error file
                         difference = engProbs[index] - spnProbs[index]
                         error_info = [tokens[index], gold, lemmas[index], "FalseP", str(engProbs[index]), str(spnProbs[index]), str(difference)]
                         error_file.write(u"\t".join(error_info) + u"\n")
@@ -154,6 +159,10 @@ class Evaluator:
                     else:
                         FalseN += 1
                         evaluations.append("Incorrect")
+                        # change lemma to show both lemmas
+                        correctLemma = spnParse(tokens[index], lemmata=True)
+                        lemmas[index] = lemmas[index] + "|" + correctLemma
+                        # write to error file
                         difference = engProbs[index] - spnProbs[index]
                         error_info = [tokens[index], gold, lemmas[index], "FalseN", str(engProbs[index]), str(spnProbs[index]), str(difference)]
                         error_file.write(u"\t".join(error_info) + u"\n")
@@ -205,8 +214,8 @@ def main(argv):
 
     # Compute prior based on gold standard
     eval = Evaluator(cslm, tags)
-    #eval.annotate(argv[1], file_ending)
-    eval.evaluate(argv[0], file_ending)
+    eval.annotate(argv[1], file_ending)
+    #eval.evaluate(argv[0], file_ending)
     os.system('say "your program has finished"')
     #  Use an array of arguments?
     #  Should user pass in number of characters, number of languages, names of
