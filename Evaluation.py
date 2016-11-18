@@ -12,6 +12,7 @@ from collections import Counter
 from CharNGram import *
 from CodeSwitchedLanguageModel import CodeSwitchedLanguageModel
 import math
+import pkg_resources
 
 from pattern.en import parse as engParse
 from pattern.es import parse as spnParse
@@ -198,12 +199,19 @@ Evaluate
 def main(argv):
 
     n = 4
-    #file_ending = '-6TH-{}gram-Parse-EngDictLookup-CAPS.tsv'.format(n)
     file_ending = "-5.5TH.tsv"
-    engData = toWords(io.open('./TrainingCorpora/Subtlex.US.trim.txt', 'r', encoding='utf8').read())
-    #engData = toWords(io.open("./TrainingCorpora/EngCorpus-1m.txt",'r', encoding='utf8').read())
-    spnData = toWords(io.open('./TrainingCorpora/ActivEsCorpus.txt', 'r', encoding='utf8').read())
-    #spnData = toWords(io.open('./TrainingCorpora/MexCorpus.txt', 'r', encoding='utf8').read())
+
+    resource_package = "anglicismIdentifier"  # Could be any module/package name
+
+    Eng_resource_path = '/'.join(['TrainingCorpora', 'Subtlex.US.trim.txt'])
+    Spn_resource_path = '/'.join(['TrainingCorpora', 'ActivEsCorpus.txt'])
+
+    engData = pkg_resources.resource_string(resource_package, Eng_resource_path)
+    spnData = pkg_resources.resource_string(resource_package, Spn_resource_path)
+
+    #engData = toWords(io.open('./TrainingCorpora/Subtlex.US.trim.txt', 'r', encoding='utf8').read())
+    #spnData = toWords(io.open('./TrainingCorpora/ActivEsCorpus.txt', 'r', encoding='utf8').read())
+
     enModel = CharNGram('Eng', getConditionalCounts(engData, n), n)
     esModel = CharNGram('Spn', getConditionalCounts(spnData, n), n)
 

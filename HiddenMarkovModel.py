@@ -8,10 +8,14 @@ import io
 from pattern.en import parse as engParse
 from pattern.es import parse as spnParse
 import os
+import pkg_resources
 
+resource_package = "anglicismIdentifier"  # Could be any module/package name
+Eng_resource_path = '/'.join(['TrainingCorpora', 'EngDict.txt'])
+Spn_resource_path = '/'.join(['TrainingCorpora', 'lemario-20101017.txt'])
 
-SpnDict = io.open('./TrainingCorpora/lemario-20101017.txt', 'r', encoding='utf8').read().split("\n")
-EngDict = io.open('./TrainingCorpora/EngDict.txt', 'r', encoding='utf8').read().split("\n")
+EngDict = pkg_resources.resource_string(resource_package, Eng_resource_path)
+SpnDict = pkg_resources.resource_string(resource_package, Spn_resource_path)
 
 
 class HiddenMarkovModel:
