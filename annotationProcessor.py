@@ -41,12 +41,6 @@ class annotationProcessor(object):
         Precision = TruePs / float(TruePs + FalsePs)
         Recall =   TruePs / float(TruePs + FalseNs)
 
-    def
-
-
-
-
-
 
 def main(argv):
     # Compute prior based on gold standard

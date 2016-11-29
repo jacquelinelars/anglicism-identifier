@@ -11,11 +11,15 @@ import os
 import pkg_resources
 
 resource_package = "anglicismIdentifier"  # Could be any module/package name
-Eng_resource_path = '/'.join(['TrainingCorpora', 'EngDict.txt'])
-Spn_resource_path = '/'.join(['TrainingCorpora', 'lemario-20101017.txt'])
 
-EngDict = pkg_resources.resource_string(resource_package, Eng_resource_path)
-SpnDict = pkg_resources.resource_string(resource_package, Spn_resource_path)
+Eng_resource_path = '/'.join(['TrainingCorpora', 'EngDict.txt'])
+EngPath = pkg_resources.resource_filename(resource_package, Eng_resource_path)
+EngDict = io.open(EngPath, 'r', encoding='utf8').read().split("\n")
+
+Spn_resource_path = '/'.join(['TrainingCorpora', 'lemario-20101017.txt'])
+SpnPath = pkg_resources.resource_filename(resource_package, Spn_resource_path)
+SpnDict = io.open(SpnPath, 'r', encoding='utf8').read().split("\n")
+
 
 
 class HiddenMarkovModel:
@@ -77,7 +81,6 @@ class HiddenMarkovModel:
                 spnLemma = spnTokenParse.split("/")[4]
                 engTokenParse = engParse(word, lemmata=True)
                 engLemma = engTokenParse.split("/")[4]
-
                 if engLemma not in EngDict or spnLemma in SpnDict:
                     self.lemmas.append(spnLemma)
                     self.lang.append("Spn")

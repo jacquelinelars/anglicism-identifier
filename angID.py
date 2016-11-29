@@ -11,10 +11,8 @@ from nltk.tag.stanford import StanfordNERTagger
 from collections import Counter
 from CharNGram import *
 from CodeSwitchedLanguageModel import CodeSwitchedLanguageModel
-import math
 import pkg_resources
 
-from pattern.en import parse as engParse
 from pattern.es import parse as spnParse
 
 """ Splits text input into words and formats them, splitting by whitespace
@@ -66,7 +64,8 @@ class Evaluator:
         return annotation_lists
 
     #  Tag testCorpus and write to output file
-    def annotate(self, testCorpus, file_ending):
+    def annotate(self, testCorpus):
+        file_ending = "-5.5TH.tsv"
         print "Annotation Mode"
         with io.open(re.sub("\.txt$", "", testCorpus) + '-Annotated' +
                      file_ending, 'w', encoding='utf8') as output:
@@ -94,7 +93,7 @@ class Evaluator:
                         lemma_dict[ang] = ang_lemma
                         ang = ""
                         ang_lemma = ""
-            angOutput = io.open(re.sub("\.txt$", "", testCorpus) + '-English' +
+            angOutput = io.open(re.sub("\.tsv$", "", testCorpus) + '-English' +
                                  file_ending, 'w', encoding='utf8')
             angOutput.write(u"English Tokens\tLemma\tCount\n")
             ang_Counter = Counter(ang_list)
@@ -107,7 +106,8 @@ class Evaluator:
             print ang_total, "English tokens found"
 
     #  Evaluate goldStandard and write to output file
-    def evaluate(self, goldStandard, file_ending):
+    def evaluate(self, goldStandard):
+        file_ending = "-5.5TH.tsv"
         print "Evaluation Mode"
         with io.open(goldStandard.strip(".tsv") + '-Output' +
                      file_ending, 'w', encoding='utf8') as output:
@@ -199,18 +199,17 @@ Evaluate
 def main(argv):
 
     n = 4
-    file_ending = "-5.5TH.tsv"
 
     resource_package = "anglicismIdentifier"  # Could be any module/package name
 
     Eng_resource_path = '/'.join(['TrainingCorpora', 'Subtlex.US.trim.txt'])
+    engPath = pkg_resources.resource_filename(resource_package, Eng_resource_path)
+    engData = toWords(io.open(engPath, 'r', encoding='utf8').read())
+
     Spn_resource_path = '/'.join(['TrainingCorpora', 'ActivEsCorpus.txt'])
+    spnPath = pkg_resources.resource_filename(resource_package, Spn_resource_path)
+    spnData = toWords(io.open(spnPath, 'r', encoding='utf8').read())
 
-    engData = pkg_resources.resource_string(resource_package, Eng_resource_path)
-    spnData = pkg_resources.resource_string(resource_package, Spn_resource_path)
-
-    #engData = toWords(io.open('./TrainingCorpora/Subtlex.US.trim.txt', 'r', encoding='utf8').read())
-    #spnData = toWords(io.open('./TrainingCorpora/ActivEsCorpus.txt', 'r', encoding='utf8').read())
 
     enModel = CharNGram('Eng', getConditionalCounts(engData, n), n)
     esModel = CharNGram('Spn', getConditionalCounts(spnData, n), n)
@@ -219,12 +218,14 @@ def main(argv):
 
     tags = [u"Eng", u"Spn"]
 
-
-
-    # Compute prior based on gold standard
     eval = Evaluator(cslm, tags)
-    eval.annotate(argv[1], file_ending)
-    #eval.evaluate(argv[0], file_ending)
+    if argv[0] == '-a':
+        eval.annotate(argv[1])
+    elif argv[0] == '-e':
+        eval.evaluate(argv[1])
+    else:
+        eval.annotate(argv[1])
+        eval.evaluate(argv[2])
     os.system('say "your program has finished"')
     #  Use an array of arguments?
     #  Should user pass in number of characters, number of languages, names of
