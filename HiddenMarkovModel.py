@@ -20,6 +20,18 @@ Spn_resource_path = '/'.join(['TrainingCorpora', 'lemario-20101017.txt'])
 SpnPath = pkg_resources.resource_filename(resource_package, Spn_resource_path)
 SpnDict = io.open(SpnPath, 'r', encoding='utf8').read().split("\n")
 
+Spn_lemma_path = '/'.join(['TrainingCorpora','lemmatization-es.txt'])
+SpnPath2 = pkg_resources.resource_filename(resource_package, Spn_lemma_path)
+SpnDict = io.open(SpnPath2, 'r', encoding='utf8').read().split("\n")
+
+SpnLemmas = set()
+for x in SpnDict:
+    try:
+        a,b = x.split('\t')
+        SpnLemmas.add(a)
+        SpnLemmas.add(b)
+    except ValueError:
+        print x
 
 
 class HiddenMarkovModel:
@@ -75,8 +87,15 @@ class HiddenMarkovModel:
             spnProb = self.cslm.prob("Spn", word); self.spnProbs.append(spnProb)
             engProb = self.cslm.prob("Eng", word); self.engProbs.append(engProb)
 
+            if word in SpnLemmas:
+                self.lang.append('Spn')
+                self.ang.append('No')
+                self.lemmas.append(word)
+                self.engProbs.append(spnProb)
+                self.spnProbs.append(engProb)
+
             # words within the threshold
-            if 0 < engProb - spnProb < 5.5:
+            elif 0 < engProb - spnProb < 5.5:
                 spnTokenParse = spnParse(word, lemmata=True)
                 spnLemma = spnTokenParse.split("/")[4]
                 engTokenParse = engParse(word, lemmata=True)
