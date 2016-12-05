@@ -46,22 +46,66 @@ def toWordsCaseSen(text): # separates punctuation
 # Pass in tags for both languages
 
 
-class Evaluator:
-    def __init__(self, cslm, tags):
-        self.cslm = cslm
-        self.tags = tags
-        self.engClassifier = StanfordNERTagger(
-            "../stanford-ner-2015-04-20/classifiers/english.all.3class.distsim.crf.ser.gz",
-            "../stanford-ner-2015-04-20/stanford-ner.jar")
-        self.spanClassifier = StanfordNERTagger(
-            "../stanford-ner-2015-04-20/classifiers/spanish.ancora.distsim.s512.crf.ser.gz",
-            "../stanford-ner-2015-04-20/stanford-ner.jar")
+class mixedText:
+    def __init__(self):
+        self.cslm = self._setup()
 
-    def tagger(self, text_list):
-        annotation_lists = []
-        hmm = HiddenMarkovModel(text_list, self.tags, self.cslm)
+
+    def _setup(self):
+        n = 4
+
+        resource_package = "anglicismIdentifier"  # Could be any module/package name
+        Eng_resource_path = '/'.join(['TrainingCorpora', 'Subtlex.US.trim.txt'])
+        engPath = pkg_resources.resource_filename(resource_package, Eng_resource_path)
+        engData = toWords(io.open(engPath, 'r', encoding='utf8').read())
+
+        Spn_resource_path = '/'.join(['TrainingCorpora', 'ActivEsCorpus.txt'])
+        spnPath = pkg_resources.resource_filename(resource_package, Spn_resource_path)
+        spnData = toWords(io.open(spnPath, 'r', encoding='utf8').read())
+
+
+        enModel = CharNGram('Eng', getConditionalCounts(engData, n), n)
+        esModel = CharNGram('Spn', getConditionalCounts(spnData, n), n)
+
+        return CodeSwitchedLanguageModel([enModel, esModel])
+
+
+
+    def tag(self, text_list):
+        #annotation_lists = []
+        hmm = HiddenMarkovModel(text_list, self.cslm)
         annotation_lists = zip(text_list, hmm.lemmas, hmm.lang, hmm.NE, hmm.ang, hmm.engProbs, hmm.spnProbs)
         return annotation_lists
+
+    def angDict(self, text_list):
+        hmm = HiddenMarkovModel(text_list, self.cslm)
+        ang = ""
+        ang_list = []
+        for token, tag in zip(text_list, hmm.ang):
+            if tag == "Yes":
+                ang = " ".join([ang, token])
+                continue
+            else:
+                if ang != "":
+                    ang_list.append(ang.strip())
+                    ang = ""
+                    ang_lemma = ""
+        return dict(Counter(ang_list))
+
+    def angList(self, text_list):
+        tags = [u"Eng", u"Spn"]
+        hmm = HiddenMarkovModel(text_list, self.cslm)
+        ang = ""
+        ang_list = []
+        for token, tag in zip(text_list, hmm.ang):
+            if tag == "Yes":
+                ang = " ".join([ang, token])
+                continue
+            else:
+                if ang != "":
+                    ang_list.append(ang.strip())
+                    ang = ""
+        return ang_list
 
     #  Tag testCorpus and write to output file
     def annotate(self, testCorpus):
@@ -71,7 +115,7 @@ class Evaluator:
                      file_ending, 'w', encoding='utf8') as output:
             text = io.open(testCorpus).read()
             testWords = toWordsCaseSen(text)
-            tagged_rows = self.tagger(testWords)
+            tagged_rows = self.tag(testWords)
             # create anglicism output file
 
             output.write(u"Token\tLemma\tLanguage\tNamed Entity\tAnglicism\tEng-NGram Prob\tSpn-NGram Prob\n")
@@ -93,6 +137,8 @@ class Evaluator:
                         lemma_dict[ang] = ang_lemma
                         ang = ""
                         ang_lemma = ""
+
+            # create anglicism output file
             angOutput = io.open(re.sub("\.tsv$", "", testCorpus) + '-English' +
                                  file_ending, 'w', encoding='utf8')
             angOutput.write(u"English Tokens\tLemma\tCount\n")
@@ -124,7 +170,7 @@ class Evaluator:
                 text.append(columns[-2].strip())
                 gold_tags.append(columns[-1].strip())
             # annotate text with model
-            annotated_output = self.tagger(text)
+            annotated_output = self.tag(text)
             tokens, lemmas, lang_tags, NE_tags, anglicism_tags, engProbs, spnProbs = map(list, zip(*annotated_output))
 
             # set counters to 0
@@ -198,34 +244,14 @@ Evaluate
 # Evaluation.py goldStandard testCorpus
 def main(argv):
 
-    n = 4
-
-    resource_package = "anglicismIdentifier"  # Could be any module/package name
-
-    Eng_resource_path = '/'.join(['TrainingCorpora', 'Subtlex.US.trim.txt'])
-    engPath = pkg_resources.resource_filename(resource_package, Eng_resource_path)
-    engData = toWords(io.open(engPath, 'r', encoding='utf8').read())
-
-    Spn_resource_path = '/'.join(['TrainingCorpora', 'ActivEsCorpus.txt'])
-    spnPath = pkg_resources.resource_filename(resource_package, Spn_resource_path)
-    spnData = toWords(io.open(spnPath, 'r', encoding='utf8').read())
-
-
-    enModel = CharNGram('Eng', getConditionalCounts(engData, n), n)
-    esModel = CharNGram('Spn', getConditionalCounts(spnData, n), n)
-
-    cslm = CodeSwitchedLanguageModel([enModel, esModel])
-
-    tags = [u"Eng", u"Spn"]
-
-    eval = Evaluator(cslm, tags)
+    mixedT = mixedText()
     if argv[0] == '-a':
-        eval.annotate(argv[1])
+        mixedT.annotate(argv[1])
     elif argv[0] == '-e':
-        eval.evaluate(argv[1])
+        mixedT.evaluate(argv[1])
     else:
-        eval.annotate(argv[1])
-        eval.evaluate(argv[2])
+        mixedT.annotate(argv[0])
+        mixedT.evaluate(argv[1])
     os.system('say "your program has finished"')
     #  Use an array of arguments?
     #  Should user pass in number of characters, number of languages, names of

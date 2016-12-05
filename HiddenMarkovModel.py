@@ -23,10 +23,10 @@ SpnDict = io.open(SpnPath, 'r', encoding='utf8').read().split("\n")
 
 
 class HiddenMarkovModel:
-    def __init__(self, words, tagSet, cslm):
+    def __init__(self, words, cslm):
         self.words = words
-        self.tagSet = tagSet
         self.cslm = cslm
+        self.tagSet = [u"Eng", u"Spn"]
         self.lemmas = []
         self.lang = []
         self.NE = []
