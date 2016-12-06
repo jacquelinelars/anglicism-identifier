@@ -21,7 +21,7 @@ from pattern.es import parse as spnParse
     @return a list of formatted words
 """
 # case-insensitive tokenizer for ngram probabilities only
-print "Welcome/Bienvenidos"
+print "Welcome/Bienvenidos!!"
 
 def toWords(text):  # separates punctuation
     # requires utf-8 encoding
@@ -109,7 +109,7 @@ class mixedText:
 
     #  Tag testCorpus and write to output file
     def annotate(self, testCorpus):
-        file_ending = "-5.5TH.tsv"
+        file_ending = "-2.tsv"
         print "Annotation Mode"
         with io.open(re.sub("\.txt$", "", testCorpus) + '-Annotated' +
                      file_ending, 'w', encoding='utf8') as output:
@@ -197,7 +197,6 @@ class mixedText:
                         lemmas[index] = lemmas[index] + "|" + correctLemma
                         # write to error file
                         try:
-                            print engProbs[index]
                             difference = engProbs[index] - spnProbs[index]
                         except TypeError:
                             difference = "NA"
@@ -216,7 +215,6 @@ class mixedText:
                         lemmas[index] = lemmas[index] + "|" + correctLemma
                         # write to error file
                         try:
-                            print engProbs[index]
                             difference = engProbs[index] - spnProbs[index]
                         except TypeError:
                             difference = "NA"

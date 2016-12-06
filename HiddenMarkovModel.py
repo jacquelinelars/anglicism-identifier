@@ -84,24 +84,20 @@ class HiddenMarkovModel:
             spnProb = self.cslm.prob("Spn", word); self.spnProbs.append(spnProb)
             engProb = self.cslm.prob("Eng", word); self.engProbs.append(engProb)
 
+            spnTokenParse = spnParse(word, lemmata=True)
+            spnLemma = spnTokenParse.split("/")[4]
+            spnLemmaList = spLemmaDict[word]
+            engTokenParse = engParse(word, lemmata=True)
+            engLemma = engTokenParse.split("/")[4]
 
-            if 0 < engProb - spnProb < 5.5:
-                spnTokenParse = spnParse(word, lemmata=True)
-                spnLemma = spnTokenParse.split("/")[4]
+            if spnLemma in SpnDict or spnLemmaList:
+                self.lemmas.append("|".join(spnLemmaList))
+                self.lang.append("Spn")
+                self.ang.append("No")
 
-                spnLemmaList = spLemmaDict[word]
-
-                engTokenParse = engParse(word, lemmata=True)
-                engLemma = engTokenParse.split("/")[4]
-
-                #print engLemma, spnLemma
-
-                if engLemma not in EngDict or spnLemmaList:
+            elif 0 < engProb - spnProb < 5.5:
+                if engLemma not in EngDict:
                     self.lemmas.append("|".join(spnLemmaList))
-                    self.lang.append("Spn")
-                    self.ang.append("No")
-                elif spnLemma in SpnDict:
-                    self.lemmas.append(spnLemma)
                     self.lang.append("Spn")
                     self.ang.append("No")
                 else:
@@ -111,23 +107,16 @@ class HiddenMarkovModel:
                         self.ang.append("Yes")
                     else:
                         self.ang.append("No")
-
             else:
-
                 lang = self.cslm.guess(word)
                 self.lang.append(lang)
                 if lang == "Eng":
-                    engTokenParse = engParse(word, lemmata=True)
-                    engLemma = engTokenParse.split("/")[4]
                     self.lemmas.append(engLemma)
                     if NE == "0":
                         self.ang.append("Yes")
                     else:
                         self.ang.append("No")
                 else:
-                    # spnTokenParse = spnParse(word, lemmata=True)
-                    # spnLemma = spnTokenParse.split("/")[4]
-                    spnLemmaList = spLemmaDict[word]
                     self.lemmas.append("|".join(spnLemmaList))
                     self.ang.append("No")
 
