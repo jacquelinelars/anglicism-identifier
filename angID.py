@@ -196,7 +196,11 @@ class mixedText:
                         correctLemma = spnParse(tokens[index], lemmata=True)
                         lemmas[index] = lemmas[index] + "|" + correctLemma
                         # write to error file
-                        difference = engProbs[index] - spnProbs[index]
+                        try:
+                            print engProbs[index]
+                            difference = engProbs[index] - spnProbs[index]
+                        except TypeError:
+                            difference = "NA"
                         error_info = [tokens[index], gold, lemmas[index], "FalseP", str(engProbs[index]), str(spnProbs[index]), str(difference)]
                         error_file.write(u"\t".join(error_info) + u"\n")
                 else:   # if ang ==  'no'
@@ -211,7 +215,11 @@ class mixedText:
                         correctLemma = spnParse(tokens[index], lemmata=True)
                         lemmas[index] = lemmas[index] + "|" + correctLemma
                         # write to error file
-                        difference = engProbs[index] - spnProbs[index]
+                        try:
+                            print engProbs[index]
+                            difference = engProbs[index] - spnProbs[index]
+                        except TypeError:
+                            difference = "NA"
                         error_info = [tokens[index], gold, lemmas[index], "FalseN", str(engProbs[index]), str(spnProbs[index]), str(difference)]
                         error_file.write(u"\t".join(error_info) + u"\n")
             #write
