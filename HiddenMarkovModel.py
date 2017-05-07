@@ -90,14 +90,13 @@ class HiddenMarkovModel:
             engTokenParse = engParse(word, lemmata=True)
             engLemma = engTokenParse.split("/")[4]
 
-            if spnLemma in SpnDict or spnLemmaList:
-                self.lemmas.append("|".join(spnLemmaList))
-                self.lang.append("Spn")
-                self.ang.append("No")
-
-            elif 0 < engProb - spnProb < 5.5:
-                if engLemma not in EngDict:
+            if 0 < engProb - spnProb < 5.5:
+                if engLemma not in EngDict or spnLemmaList:
                     self.lemmas.append("|".join(spnLemmaList))
+                    self.lang.append("Spn")
+                    self.ang.append("No")
+                elif spnLemma in SpnDict:
+                    self.lemmas.append(spnLemma)
                     self.lang.append("Spn")
                     self.ang.append("No")
                 else:

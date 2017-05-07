@@ -21,7 +21,7 @@ from pattern.es import parse as spnParse
     @return a list of formatted words
 """
 # case-insensitive tokenizer for ngram probabilities only
-print "Welcome/Bienvenidos!!"
+print "Starting Program"
 
 def toWords(text):  # separates punctuation
     # requires utf-8 encoding
@@ -153,7 +153,7 @@ class mixedText:
 
     #  Evaluate goldStandard and write to output file
     def evaluate(self, goldStandard):
-        file_ending = "-5.5TH.tsv"
+        file_ending = "-2.tsv"
         print "Evaluation Mode"
         with io.open(goldStandard.strip(".tsv") + '-Output' +
                      file_ending, 'w', encoding='utf8') as output:
