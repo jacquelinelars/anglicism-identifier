@@ -89,11 +89,9 @@ class mixedText:
                 if ang != "":
                     ang_list.append(ang.strip())
                     ang = ""
-                    ang_lemma = ""
         return dict(Counter(ang_list))
 
     def angList(self, text_list):
-        tags = [u"Eng", u"Spn"]
         hmm = HiddenMarkovModel(text_list, self.cslm)
         ang = ""
         ang_list = []
@@ -105,6 +103,23 @@ class mixedText:
                 if ang != "":
                     ang_list.append(ang.strip())
                     ang = ""
+        return ang_list
+
+    def angAndLemmaList(self, text_list):
+        hmm = HiddenMarkovModel(text_list, self.cslm)
+        ang = ""
+        angLemma = ""
+        ang_list = []
+        for token, lemma, tag in zip(text_list, hmm.lemmas, hmm.ang):
+            if tag == "Yes":
+                ang = " ".join([ang, token])
+                angLemma = " ".join([angLemma, lemma])
+                continue
+            else:
+                if ang != "":
+                    ang_list.append((ang.strip(), angLemma.strip()))
+                    ang = ""
+                    angLemma = ""
         return ang_list
 
     #  Tag testCorpus and write to output file
