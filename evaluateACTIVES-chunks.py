@@ -14,11 +14,11 @@ def chunker(l, n):
     return words
 
 
-directory = "/Users/jacqueline/Google Drive/My_Data/Activ-es_Corpus/activ-es-v.01/corpus/plain/"
+directory = "/Users/jacqueline/Google Drive/My_Data/Activ-es/activ-es-v.01/corpus/plain/"
 os.chdir(directory)
 
 # create for manaual check
-offFile = r"/Users/jacqueline/Google Drive/Dissertation/04Chapter2 Social Stratification/04Data/Anglicism Output/ACTIV-falseAngs.txt"
+offFile = r"/Users/jacqueline/Google Drive/Dissertation/05StratifcationData-v1/Anglicism Output/ACTIV-falseAngs.txt"
 offText = io.open(offFile, encoding="utf-8").readlines()
 offList = [x.strip() for x in offText]
 
@@ -50,7 +50,7 @@ for root, dirs, files in os.walk(directory):
                               '; '.join(Tokens)]
             movieMetaData.append(row)
 
-with io.open('ACTIVchunks-angMetadata2.csv', 'w', encoding = "utf-8") as csv_file:
+with io.open('ACTIVchunks-angMetadata.csv', 'w', encoding = "utf-8") as csv_file:
     csv_file.write(u"Year,Title,Genre,WordCount,AngCount,Angs\n")
     for row in movieMetaData:
         print row

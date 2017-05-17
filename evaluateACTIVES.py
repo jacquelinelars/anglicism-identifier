@@ -5,12 +5,12 @@ from collections import Counter
 import angID
 mixT = angID.mixedText()
 
-directory = "/Users/jacqueline/Google Drive/My_Data/Activ-es_Corpus/activ-es-v.01/corpus/plain/"
+directory = "/Users/jacqueline/Google Drive/My_Data/Activ-es/activ-es-v.01/corpus/plain/"
 # directory = "/Users/jacqueline/Desktop/ACTIV/"
 os.chdir(directory)
 
 # create for manaual check
-offFile = r"/Users/jacqueline/Google Drive/Dissertation/04Chapter2 Social Stratification/04Data/Anglicism Output/ACTIV-falseAngs.txt"
+offFile = r"/Users/jacqueline/Google Drive/Dissertation/05StratifcationData-v1/Anglicism Output/ACTIV-falseAngs.txt"
 offText = io.open(offFile, encoding="utf-8").readlines()
 offList = [x.strip() for x in offText]
 
