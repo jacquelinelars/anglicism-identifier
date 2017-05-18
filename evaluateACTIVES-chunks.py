@@ -32,13 +32,16 @@ for root, dirs, files in os.walk(directory):
         # split corpus into articles
         pattern = u"es_[^_]*_([^_]*)_([^_]*)_[^_]*_([^_]*)"
         metadata = list(re.search(pattern, file.decode('utf-8'), re.UNICODE).groups())
+        # remove commas from movie titles which create problems in R
+        for index, item in enumerate(metadata):
+            if "," in item:
+                metadata[index] = re.sub(",", "", item)
         text = io.open(file, encoding="utf-8").read()
         words = angID.toWordsCaseSen(text)
         # divide transcript into 20 segments
         chunk_size = len(words)/20
         chunks = chunker(words, chunk_size)
         for chunk in chunks:
-
             anglicisms = mixT.angAndLemmaList(chunk)
             anglicismsCleaned = [(a, b) for a, b in anglicisms
                                  if a not in offList]
@@ -50,11 +53,13 @@ for root, dirs, files in os.walk(directory):
                               '; '.join(Tokens)]
             movieMetaData.append(row)
 
-with io.open('ACTIVchunks-angMetadata.csv', 'w', encoding = "utf-8") as csv_file:
-    csv_file.write(u"Year,Title,Genre,WordCount,AngCount,Angs\n")
+with io.open('ACTIVchunks-angMetadata.csv', 'w', encoding="utf-8") as csv_file:
+    csv_file.write(u"Title,Newspaper,WordCount,"
+                   "AngLemmaCount,AngTypeCount,AngTokenCount,"
+                   "AngLemmas,AngTypes,AngTokens\n")
     for row in movieMetaData:
-        print row
-        outputRow = u"{},{},{},{},{},{}\n".format(*row)
+        outputRow = u"{},{},{},{},{},{},{},{},{}\n".format(*row)
+        csv_file.write(outputRow)
         csv_file.write(outputRow)
 
 os.system('say "your program has finished"')

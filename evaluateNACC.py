@@ -10,7 +10,7 @@ directory = "/Users/jacqueline/Google Drive/My_Data/NACC/"
 os.chdir(directory)
 
 # create for manaual check
-offFile = r"/Users/jacqueline/Google Drive/Dissertation/05StratifcationData-v1/Anglicism Output/NACC-falseAngs.txt"
+offFile = r"/Users/jacqueline/Google Drive/Dissertation/07Ch2/07Ch2PreRevisions/AnglicismOutputReview/NACC-falseAngs.txt"
 offText = io.open(offFile, encoding="utf-8").readlines()
 offList = [x.strip() for x in offText]
 
