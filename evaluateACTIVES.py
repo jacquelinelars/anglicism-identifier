@@ -41,11 +41,11 @@ for root, dirs, files in os.walk(directory):
         movieMetaData.append(row)
 
 with io.open('ACTIV-angMetadata.csv', 'w', encoding="utf-8") as csv_file:
-    csv_file.write(u"Title,Newspaper,WordCount,"
+    csv_file.write(u"Year,Title,Genre,WordCount,"
                    "AngLemmaCount,AngTypeCount,AngTokenCount,"
                    "AngLemmas,AngTypes,AngTokens\n")
     for row in movieMetaData:
-        outputRow = u"{},{},{},{},{},{},{},{},{}\n".format(*row)
+        outputRow = u"{},{},{},{},{},{},{},{},{},{}\n".format(*row)
         csv_file.write(outputRow)
 
 os.system('say "your program has finished"')

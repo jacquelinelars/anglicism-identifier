@@ -18,7 +18,7 @@ directory = "/Users/jacqueline/Google Drive/My_Data/Activ-es/activ-es-v.01/corpu
 os.chdir(directory)
 
 # create for manaual check
-offFile = r"/Users/jacqueline/Google Drive/Dissertation/05StratifcationData-v1/Anglicism Output/ACTIV-falseAngs.txt"
+offFile = r"/Users/jacqueline/Google Drive/Dissertation/07Ch2/07Ch2PreRevisions/AnglicismOutputReview/ACTIV-falseAngs.txt"
 offText = io.open(offFile, encoding="utf-8").readlines()
 offList = [x.strip() for x in offText]
 
@@ -54,11 +54,11 @@ for root, dirs, files in os.walk(directory):
             movieMetaData.append(row)
 
 with io.open('ACTIVchunks-angMetadata.csv', 'w', encoding="utf-8") as csv_file:
-    csv_file.write(u"Title,Newspaper,WordCount,"
+    csv_file.write(u"Year,Title,Genre,WordCount,"
                    "AngLemmaCount,AngTypeCount,AngTokenCount,"
                    "AngLemmas,AngTypes,AngTokens\n")
     for row in movieMetaData:
-        outputRow = u"{},{},{},{},{},{},{},{},{}\n".format(*row)
+        outputRow = u"{},{},{},{},{},{},{},{},{},{}\n".format(*row)
         csv_file.write(outputRow)
         csv_file.write(outputRow)
 
