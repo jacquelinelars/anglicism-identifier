@@ -14,7 +14,7 @@ def chunker(l, n):
     return words
 
 
-directory = "/Users/jacqueline/Google Drive/My_Data/Activ-es/activ-es-v.01/corpus/plain/"
+directory = "/Users/jacqueline/Google Drive/My_Data/Activ-es/data/corpus/plain"
 os.chdir(directory)
 
 # create for manaual check
@@ -48,20 +48,18 @@ for root, dirs, files in os.walk(directory):
             Tokens = [a for a, b in anglicismsCleaned]
             Types = set(Tokens)
             Lemmas = set([b for a, b in anglicismsCleaned])
-            row = metadata + [len(words), len(Lemmas), len(Types), len(Tokens),
+            row = metadata + [chunk_size, len(Lemmas), len(Types), len(Tokens),
                               '; '.join(Lemmas), '; '.join(Types),
                               '; '.join(Tokens)]
             movieMetaData.append(row)
 
-with io.open('ACTIVchunks-angMetadata.csv', 'w', encoding="utf-8") as csv_file:
+with io.open('/Users/jacqueline/Desktop/ACTIVchunks-angMetadata.csv', 'w', encoding="utf-8") as csv_file:
     csv_file.write(u"Year,Title,Genre,WordCount,"
                    "AngLemmaCount,AngTypeCount,AngTokenCount,"
                    "AngLemmas,AngTypes,AngTokens\n")
     for row in movieMetaData:
         outputRow = u"{},{},{},{},{},{},{},{},{},{}\n".format(*row)
         csv_file.write(outputRow)
-        csv_file.write(outputRow)
-
 os.system('say "your program has finished"')
 
 
