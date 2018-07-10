@@ -15,30 +15,25 @@ import pkg_resources
 
 from pattern.es import parse as spnParse
 
-""" Splits text input into words and formats them, splitting by whitespace
-
-    @param text a string of text
-    @return a list of formatted words
-"""
 # case-insensitive tokenizer for ngram probabilities only
 print "Starting Program"
 
 def toWords(text):  # separates punctuation
     # requires utf-8 encoding
-    text = re.sub("www\.[^ ]*|https:\/\/[^ ]*", "WEBSITE", text)  # remove websites
-    token = re.compile(ur'[\w]+|[^\s\w]', re.UNICODE)
+    text = re.sub("http:\/\/[^\s]*|www\.[^\s]*", " ", text)  # remove websites
+    text = re.sub("[^\s]*@[^\s]*|#[^\s]*", " ", text)  # remove email and twitter tags
+    text = re.sub("(?<=[a-z])(?=[A-Z])", " ", text)  # correct unseparated words with caps in the middle "holdoutEl"
+    token = re.compile(ur'[^\s\w-]|[\w-]+', re.UNICODE) #pattern to identify words, punct, and hyphenated words
     tokens = re.findall(token, text)
     return [word.lower() for word in tokens]
-"""
 
-def toWords(text): # splits on white space
-    tokens = re.sub("\t|\n|\r", "", text)
-    return [word.lower() for word in tokens.split()]
-"""
 
 def toWordsCaseSen(text): # separates punctuation
     # requires utf-8 encoding
-    token = re.compile(ur'[\w]+|[^\s\w]', re.UNICODE)
+    text = re.sub("http:\/\/[^\s]*|www\.[^\s]*", " ", text)  # remove websites
+    text = re.sub("[^\s]*@[^\s]*|#[^\s]*", " ", text)  # remove email and twitter tags
+    text = re.sub("(?<=[a-z])(?=[A-Z])", " ", text)  # correct unseparated words with caps in the middle "holdoutEl"
+    token = re.compile(ur'[^\s\w-]|[\w-]+', re.UNICODE) #pattern to identify words, punct, and hyphenated words
     return re.findall(token, text)
 
 
@@ -63,16 +58,13 @@ class mixedText:
         spnPath = pkg_resources.resource_filename(resource_package, Spn_resource_path)
         spnData = toWords(io.open(spnPath, 'r', encoding='utf8').read())
 
-
         enModel = CharNGram('Eng', getConditionalCounts(engData, n), n)
         esModel = CharNGram('Spn', getConditionalCounts(spnData, n), n)
 
         return CodeSwitchedLanguageModel([enModel, esModel])
 
-
-
     def tag(self, text_list):
-        #annotation_lists = []
+        # annotation_lists = []
         hmm = HiddenMarkovModel(text_list, self.cslm)
         annotation_lists = zip(text_list, hmm.lemmas, hmm.lang, hmm.NE, hmm.ang, hmm.engProbs, hmm.spnProbs)
         return annotation_lists
