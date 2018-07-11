@@ -7,16 +7,15 @@ import re
 import io
 import os
 from HiddenMarkovModel import HiddenMarkovModel
-from nltk.tag.stanford import StanfordNERTagger
 from collections import Counter
 from CharNGram import *
 from CodeSwitchedLanguageModel import CodeSwitchedLanguageModel
 import pkg_resources
-
 from pattern.es import parse as spnParse
 
 # case-insensitive tokenizer for ngram probabilities only
 print "Starting Program"
+
 
 def toWords(text):  # separates punctuation
     # requires utf-8 encoding
@@ -28,7 +27,7 @@ def toWords(text):  # separates punctuation
     return [word.lower() for word in tokens]
 
 
-def toWordsCaseSen(text): # separates punctuation
+def toWordsCaseSen(text):  # separates punctuation
     # requires utf-8 encoding
     text = re.sub("http:\/\/[^\s]*|www\.[^\s]*", " ", text)  # remove websites
     text = re.sub("[^\s]*@[^\s]*|#[^\s]*", " ", text)  # remove email and twitter tags
@@ -116,17 +115,25 @@ class mixedText:
 
     #  Tag testCorpus and write to output file
     def annotate(self, testCorpus):
-        file_ending = "-2.tsv"
         print "Annotation Mode"
-        with io.open(re.sub("\.txt$", "", testCorpus) + '-Annotated' +
-                     file_ending, 'w', encoding='utf8') as output:
-            text = io.open(testCorpus).read()
-            testWords = toWordsCaseSen(text)
-            tagged_rows = self.tag(testWords)
-            # create anglicism output file
 
+        new_ext = ".tsv"
+        old_ext = re.compile("\.txt$")
+        output_file = re.sub(old_ext, '-annotated' + new_ext, testCorpus)
+        ang_file = re.sub(old_ext, '-English' + new_ext, testCorpus)
+
+        #  open text and output files
+        with io.open(output_file, 'w', encoding='utf8') as output, \
+             io.open(ang_file, 'w', encoding='utf8') as angOutput, \
+             io.open(testCorpus) as textFile:
+
+            text = textFile.read()
+            testWords = toWordsCaseSen(text)  # tokenize the text
+            tagged_rows = self.tag(testWords)  # tag the tokenized text
+
+            #  write annotated text to output file
+            #  create dictionary of ang and ang phrases with lemmas
             output.write(u"Token\tLemma\tLanguage\tNamed Entity\tAnglicism\tEng-NGram Prob\tSpn-NGram Prob\n")
-
             ang = ""
             ang_lemma = ""
             ang_list = []
@@ -140,22 +147,20 @@ class mixedText:
                     continue
                 else:
                     if ang != "":
-                        ang_list.append(ang)
-                        lemma_dict[ang] = ang_lemma
+                        ang_list.append(ang.strip())
+                        lemma_dict[ang.strip()] = ang_lemma.strip()
                         ang = ""
                         ang_lemma = ""
 
-            # create anglicism output file
-            angOutput = io.open(re.sub("\.tsv$", "", testCorpus) + '-English' +
-                                 file_ending, 'w', encoding='utf8')
+            # write anglicism list to output
             angOutput.write(u"English Tokens\tLemma\tCount\n")
-            ang_Counter = Counter(ang_list)
-            ang_total = sum(ang_Counter.itervalues())
+            ang_Counter = Counter(ang_list)  # count anglicisms by lemma
+            ang_total = sum(ang_Counter.itervalues())  # total number of anglicisms
             for ang, count in ang_Counter.most_common():
-                ang_row = '\t'.join([unicode(ang), unicode(count), unicode(lemma_dict[ang])]) + u"\n"
+                ang_row = '\t'.join([unicode(ang),
+                                     unicode(count),
+                                     unicode(lemma_dict[ang])]) + u"\n"
                 angOutput.write(ang_row)
-            angOutput.close()
-            print "Annotation files written"
             print ang_total, "English tokens found"
 
     #  Evaluate goldStandard and write to output file
@@ -169,7 +174,6 @@ class mixedText:
                                  file_ending, 'w', encoding='utf8')
             error_file.write(
                 u'Token\tGS\tLemma\tErrorType\tEngNgram\tSpnNgram\tNgramDifference\n')
-            #create list of text and tags
             lines = io.open(goldStandard, 'r', encoding='utf8').readlines()
             text, gold_tags = [], []
             for x in lines:
@@ -254,7 +258,9 @@ Build Markov model with Expectation Minimization
 Annotate
 Evaluate
 """
-# Evaluation.py goldStandard testCorpus
+
+
+#  Evaluation.py goldStandard testCorpus
 def main(argv):
 
     mixedT = mixedText()
@@ -271,4 +277,4 @@ def main(argv):
     #  languages?
 
 if __name__ == "__main__":
-    main(sys.argv[1:]) # Skip over script name
+    main(sys.argv[1:])  # Skip over script name
