@@ -68,11 +68,7 @@ class HiddenMarkovModel:
                 continue
 
             # annotate numbers and move to next token
-            num = "no"
-            for char in word:
-                if char.isdigit():
-                    num = "yes"
-            if num == "yes":
+            if re.match(ur'\d', word):
                 self.lang.append('Num')
                 self.ang.append('No')
                 self.lemmas.append(word)
