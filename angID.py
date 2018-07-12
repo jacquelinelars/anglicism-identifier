@@ -8,7 +8,7 @@ import io
 import os
 from HiddenMarkovModel import HiddenMarkovModel
 from collections import Counter
-from CharNGram import *
+import CharNGram
 from CodeSwitchedLanguageModel import CodeSwitchedLanguageModel
 import pkg_resources
 from pattern.es import parse as spnParse
@@ -57,8 +57,8 @@ class mixedText:
         spnPath = pkg_resources.resource_filename(resource_package, Spn_resource_path)
         spnData = toWords(io.open(spnPath, 'r', encoding='utf8').read())
 
-        enModel = CharNGram('Eng', getConditionalCounts(engData, n), n)
-        esModel = CharNGram('Spn', getConditionalCounts(spnData, n), n)
+        enModel = CharNGram.CharNGram('Eng', CharNGram.getConditionalCounts(engData, n), n)
+        esModel = CharNGram.CharNGram('Spn', CharNGram.getConditionalCounts(spnData, n), n)
 
         return CodeSwitchedLanguageModel([enModel, esModel])
 
@@ -152,7 +152,7 @@ class mixedText:
                         ang = ""
                         ang_lemma = ""
 
-            # write anglicism list to output
+            #  write anglicism list to output
             angOutput.write(u"English Tokens\tLemma\tCount\n")
             ang_Counter = Counter(ang_list)  # count anglicisms by lemma
             ang_total = sum(ang_Counter.itervalues())  # total number of anglicisms
@@ -165,16 +165,19 @@ class mixedText:
 
     #  Evaluate goldStandard and write to output file
     def evaluate(self, goldStandard):
-        file_ending = "-2.tsv"
         print "Evaluation Mode"
-        with io.open(goldStandard.strip(".tsv") + '-Output' +
-                     file_ending, 'w', encoding='utf8') as output:
-            # create error file
-            error_file = io.open(goldStandard.strip(".tsv") + '-Errors' +
-                                 file_ending, 'w', encoding='utf8')
+
+        file_ext = ".tsv"
+        file_name = goldStandard.rstrip(file_ext)
+
+        with io.open(file_name + '-Output' + file_ext, 'w', encoding='utf8') as output, \
+             io.open(file_name + '-Errors' + file_ext, 'w', encoding='utf8') as error_file, \
+             io.open(goldStandard, 'r', encoding='utf8') as gs_file:
+
             error_file.write(
                 u'Token\tGS\tLemma\tErrorType\tEngNgram\tSpnNgram\tNgramDifference\n')
-            lines = io.open(goldStandard, 'r', encoding='utf8').readlines()
+
+            lines = gs_file.readlines()
             text, gold_tags = [], []
             for x in lines:
                 columns = x.split("\t")
@@ -231,10 +234,10 @@ class mixedText:
                             difference = "NA"
                         error_info = [tokens[index], gold, lemmas[index], "FalseN", str(engProbs[index]), str(spnProbs[index]), str(difference)]
                         error_file.write(u"\t".join(error_info) + u"\n")
-            #write
+            # write
             Accuracy = (TrueP + TrueN) / float(TrueP + FalseN + TrueN + FalseP)
             Precision = TrueP / float(TrueP + FalseP)
-            Recall =   TrueP / float(TrueP + FalseN)
+            Recall = TrueP / float(TrueP + FalseN)
             fScore = 2*Precision*Recall/float(Precision + Recall)
             output.write(
                 u"Accuracy: {}\nPrecision: {}\nRecall: {}\nF-Score: {}\n".format(
